@@ -15,7 +15,9 @@ import (
 	"sync"
 	"time"
 
+	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -564,4 +566,13 @@ func RegisterOvnMetrics(clientset kubernetes.Interface, k8sNodeName string, stop
 	go RegisterOvnDBMetrics(clientset, k8sNodeName, stopChan)
 	go RegisterOvnControllerMetrics(stopChan)
 	go RegisterOvnNorthdMetrics(clientset, k8sNodeName, stopChan)
+}
+
+func SetupOvsClient(stopChan <-chan struct{}) (libovsdbclient.Client, error) {
+	ovsClient, err := libovsdb.NewOVSClient(stopChan)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ovsdb client: (%v)", err)
+	}
+
+	return ovsClient, nil
 }

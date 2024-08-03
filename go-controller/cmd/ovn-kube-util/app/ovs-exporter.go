@@ -13,6 +13,8 @@ import (
 	kexec "k8s.io/utils/exec"
 )
 
+var metricsScrapeInterval int
+
 var OvsExporterCommand = cli.Command{
 	Name:  "ovs-exporter",
 	Usage: "",
@@ -20,6 +22,12 @@ var OvsExporterCommand = cli.Command{
 		&cli.StringFlag{
 			Name:  "metrics-bind-address",
 			Usage: `The IP address and port for the metrics server to serve on (default ":9310")`,
+		},
+		&cli.IntFlag{
+			Name:        "metrics-interval",
+			Usage:       "The interval in seconds at which ovs metrics are collected",
+			Value:       30,
+			Destination: &metricsScrapeInterval,
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -33,11 +41,17 @@ var OvsExporterCommand = cli.Command{
 			return err
 		}
 
+		// start the ovsdb client for ovs metrics monitoring
+		ovsClient, err := metrics.SetupOvsClient(stopChan)
+		if err != nil {
+			klog.Errorf("Error initializing ovs client: %v", err)
+		}
+
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
 
 		// register ovs metrics that will be served off of /metrics path
-		metrics.RegisterStandaloneOvsMetrics(stopChan)
+		metrics.RegisterStandaloneOvsMetrics(ovsClient, metricsScrapeInterval, stopChan)
 
 		server := &http.Server{Addr: bindAddress, Handler: mux}
 		go func() {
