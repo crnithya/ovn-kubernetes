@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -29,14 +30,14 @@ func FindLogicalSwitchesWithPredicate(nbClient libovsdbclient.Client, p switchPr
 // GetLogicalSwitch looks up a logical switch from the cache
 func GetLogicalSwitch(nbClient libovsdbclient.Client, sw *nbdb.LogicalSwitch) (*nbdb.LogicalSwitch, error) {
 	found := []*nbdb.LogicalSwitch{}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          sw,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -48,16 +49,16 @@ func GetLogicalSwitch(nbClient libovsdbclient.Client, sw *nbdb.LogicalSwitch) (*
 // CreateOrUpdateLogicalSwitch creates or updates the provided logical switch
 func CreateOrUpdateLogicalSwitch(nbClient libovsdbclient.Client, sw *nbdb.LogicalSwitch, fields ...interface{}) error {
 	if len(fields) == 0 {
-		fields = onModelUpdatesAllNonDefault()
+		fields = libovsdbops.OnModelUpdatesAllNonDefault()
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          sw,
 		OnModelUpdates: fields,
 		ErrNotFound:    false,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err := m.CreateOrUpdate(opModel)
 	return err
 }
@@ -83,14 +84,14 @@ func UpdateLogicalSwitchSetExternalIDs(nbClient libovsdbclient.Client, logicalSw
 		}
 	}
 
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          logicalSwitch,
 		OnModelUpdates: []interface{}{&logicalSwitch.ExternalIDs},
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err = m.CreateOrUpdate(opModel)
 	return err
 }
@@ -100,27 +101,27 @@ type logicalSwitchPredicate func(*nbdb.LogicalSwitch) bool
 // DeleteLogicalSwitchesWithPredicateOps returns the operations to delete the logical switches matching the provided predicate
 func DeleteLogicalSwitchesWithPredicateOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation,
 	p logicalSwitchPredicate) ([]libovsdb.Operation, error) {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          &nbdb.LogicalSwitch{},
 		ModelPredicate: p,
 		ErrNotFound:    false,
 		BulkOp:         true,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
 // DeleteLogicalSwitchOps returns the operations to delete the provided logical switch
 func DeleteLogicalSwitchOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation,
 	swName string) ([]libovsdb.Operation, error) {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:       &nbdb.LogicalSwitch{Name: swName},
 		ErrNotFound: false,
 		BulkOp:      false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
@@ -130,7 +131,7 @@ func DeleteLogicalSwitch(nbClient libovsdbclient.Client, swName string) error {
 	if err != nil {
 		return err
 	}
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = libovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -143,14 +144,14 @@ func AddLoadBalancersToLogicalSwitchOps(nbClient libovsdbclient.Client, ops []li
 	for _, lb := range lbs {
 		sw.LoadBalancer = append(sw.LoadBalancer, lb.UUID)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.LoadBalancer},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModel)
 }
 
@@ -161,7 +162,7 @@ func RemoveLoadBalancersFromLogicalSwitchOps(nbClient libovsdbclient.Client, ops
 	for _, lb := range lbs {
 		sw.LoadBalancer = append(sw.LoadBalancer, lb.UUID)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.LoadBalancer},
 		// if we want to delete loadbalancer from the switch that doesn't exist, that is noop
@@ -169,7 +170,7 @@ func RemoveLoadBalancersFromLogicalSwitchOps(nbClient libovsdbclient.Client, ops
 		BulkOp:      false,
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	return modelClient.DeleteOps(ops, opModel)
 }
 
@@ -186,14 +187,14 @@ func AddACLsToLogicalSwitchOps(nbClient libovsdbclient.Client, ops []libovsdb.Op
 		sw.ACLs = append(sw.ACLs, acl.UUID)
 	}
 
-	opModels := operationModel{
+	opModels := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.ACLs},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModels)
 }
 
@@ -208,7 +209,7 @@ func RemoveACLsFromLogicalSwitchesWithPredicateOps(nbClient libovsdbclient.Clien
 	for _, acl := range acls {
 		sw.ACLs = append(sw.ACLs, acl.UUID)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            &sw,
 		ModelPredicate:   p,
 		OnModelMutations: []interface{}{&sw.ACLs},
@@ -216,7 +217,7 @@ func RemoveACLsFromLogicalSwitchesWithPredicateOps(nbClient libovsdbclient.Clien
 		BulkOp:           true,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
@@ -227,7 +228,7 @@ func RemoveACLsFromLogicalSwitchesWithPredicate(nbClient libovsdbclient.Client, 
 	if err != nil {
 		return err
 	}
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = libovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -253,14 +254,14 @@ func UpdateLogicalSwitchSetOtherConfig(nbClient libovsdbclient.Client, sw *nbdb.
 		}
 	}
 
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          sw,
 		OnModelUpdates: []interface{}{&sw.OtherConfig},
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err = m.CreateOrUpdate(opModel)
 	return err
 }
@@ -270,14 +271,14 @@ func UpdateLogicalSwitchSetOtherConfig(nbClient libovsdbclient.Client, sw *nbdb.
 // GetLogicalSwitchPort looks up a logical switch port from the cache
 func GetLogicalSwitchPort(nbClient libovsdbclient.Client, lsp *nbdb.LogicalSwitchPort) (*nbdb.LogicalSwitchPort, error) {
 	found := []*nbdb.LogicalSwitchPort{}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          lsp,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -289,19 +290,19 @@ func GetLogicalSwitchPort(nbClient libovsdbclient.Client, lsp *nbdb.LogicalSwitc
 func createOrUpdateLogicalSwitchPortsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, sw *nbdb.LogicalSwitch, createSwitch bool, lsps ...*nbdb.LogicalSwitchPort) ([]libovsdb.Operation, error) {
 	originalPorts := sw.Ports
 	sw.Ports = make([]string, 0, len(lsps))
-	opModels := make([]operationModel, 0, len(lsps)+1)
+	opModels := make([]libovsdbops.OperationModel, 0, len(lsps)+1)
 	for i := range lsps {
 		lsp := lsps[i]
-		opModel := operationModel{
+		opModel := libovsdbops.OperationModel{
 			Model:          lsp,
-			OnModelUpdates: getAllUpdatableFields(lsp),
+			OnModelUpdates: libovsdbops.GetAllUpdatableFields(lsp),
 			DoAfter:        func() { sw.Ports = append(sw.Ports, lsp.UUID) },
 			ErrNotFound:    false,
 			BulkOp:         false,
 		}
 		opModels = append(opModels, opModel)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.Ports},
 		ErrNotFound:      !createSwitch,
@@ -309,7 +310,7 @@ func createOrUpdateLogicalSwitchPortsOps(nbClient libovsdbclient.Client, ops []l
 	}
 	opModels = append(opModels, opModel)
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	ops, err := m.CreateOrUpdateOps(ops, opModels...)
 	sw.Ports = originalPorts
 	if err != nil && errors.Is(err, libovsdbclient.ErrNotFound) && !createSwitch {
@@ -324,7 +325,7 @@ func createOrUpdateLogicalSwitchPorts(nbClient libovsdbclient.Client, sw *nbdb.L
 		return err
 	}
 
-	_, err = TransactAndCheckAndSetUUIDs(nbClient, lsps, ops)
+	_, err = libovsdbops.TransactAndCheckAndSetUUIDs(nbClient, lsps, ops)
 	return err
 }
 
@@ -353,10 +354,10 @@ func CreateOrUpdateLogicalSwitchPortsAndSwitch(nbClient libovsdbclient.Client, s
 func DeleteLogicalSwitchPortsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, sw *nbdb.LogicalSwitch, lsps ...*nbdb.LogicalSwitchPort) ([]libovsdb.Operation, error) {
 	originalPorts := sw.Ports
 	sw.Ports = make([]string, 0, len(lsps))
-	opModels := make([]operationModel, 0, len(lsps)+1)
+	opModels := make([]libovsdbops.OperationModel, 0, len(lsps)+1)
 	for i := range lsps {
 		lsp := lsps[i]
-		opModel := operationModel{
+		opModel := libovsdbops.OperationModel{
 			Model: lsp,
 			DoAfter: func() {
 				if lsp.UUID != "" {
@@ -368,7 +369,7 @@ func DeleteLogicalSwitchPortsOps(nbClient libovsdbclient.Client, ops []libovsdb.
 		}
 		opModels = append(opModels, opModel)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.Ports},
 		ErrNotFound:      false,
@@ -376,7 +377,7 @@ func DeleteLogicalSwitchPortsOps(nbClient libovsdbclient.Client, ops []libovsdb.
 	}
 	opModels = append(opModels, opModel)
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	ops, err := m.DeleteOps(ops, opModels...)
 	sw.Ports = originalPorts
 	return ops, err
@@ -390,7 +391,7 @@ func DeleteLogicalSwitchPorts(nbClient libovsdbclient.Client, sw *nbdb.LogicalSw
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = libovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -425,18 +426,18 @@ func DeleteLogicalSwitchPortsWithPredicateOps(nbClient libovsdbclient.Client, op
 		}
 	}
 
-	opModels := make([]operationModel, 0, len(lsps)+1)
+	opModels := make([]libovsdbops.OperationModel, 0, len(lsps)+1)
 	sw.Ports = make([]string, 0, len(lsps))
 	for _, lsp := range lsps {
 		sw.Ports = append(sw.Ports, lsp.UUID)
-		opModel := operationModel{
+		opModel := libovsdbops.OperationModel{
 			Model:       lsp,
 			ErrNotFound: false,
 			BulkOp:      false,
 		}
 		opModels = append(opModels, opModel)
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.Ports},
 		ErrNotFound:      false,
@@ -444,7 +445,7 @@ func DeleteLogicalSwitchPortsWithPredicateOps(nbClient libovsdbclient.Client, op
 	}
 	opModels = append(opModels, opModel)
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModels...)
 }
 
@@ -470,7 +471,7 @@ func UpdateLogicalSwitchPortSetOptions(nbClient libovsdbclient.Client, lsp *nbdb
 		}
 	}
 
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		// For LSP's Name is a valid index, so no predicate is needed
 		Model:          lsp,
 		OnModelUpdates: []interface{}{&lsp.Options},
@@ -478,7 +479,7 @@ func UpdateLogicalSwitchPortSetOptions(nbClient libovsdbclient.Client, lsp *nbdb
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err = m.CreateOrUpdate(opModel)
 	return err
 }

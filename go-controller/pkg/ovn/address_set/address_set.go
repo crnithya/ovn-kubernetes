@@ -5,7 +5,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	utilerrors "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util/errors"
@@ -146,7 +147,7 @@ func (asf *ovnAddressSetFactory) GetAddressSet(dbIDs *libovsdbops.DbObjectIDs) (
 		v4set, v6set *ovnAddressSet
 	)
 	p := libovsdbops.GetPredicate[*nbdb.AddressSet](dbIDs, nil)
-	addrSetList, err := libovsdbops.FindAddressSetsWithPredicate(asf.nbClient, p)
+	addrSetList, err := ovnops.FindAddressSetsWithPredicate(asf.nbClient, p)
 	if err != nil {
 		return nil, fmt.Errorf("error getting address sets: %w", err)
 	}
@@ -167,7 +168,7 @@ func (asf *ovnAddressSetFactory) forEachAddressSet(ownerController string, dbIDs
 	do func(*nbdb.AddressSet) error) error {
 	predIDs := libovsdbops.NewDbObjectIDs(dbIDsType, ownerController, nil)
 	p := libovsdbops.GetPredicate[*nbdb.AddressSet](predIDs, nil)
-	addrSetList, err := libovsdbops.FindAddressSetsWithPredicate(asf.nbClient, p)
+	addrSetList, err := ovnops.FindAddressSetsWithPredicate(asf.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("error reading address sets: %+v", err)
 	}
@@ -220,7 +221,7 @@ func (asf *ovnAddressSetFactory) DestroyAddressSet(dbIDs *libovsdbops.DbObjectID
 	asv6 := &nbdb.AddressSet{
 		Name: buildAddressSet(dbIDs, ipv6InternalID).Name,
 	}
-	err := libovsdbops.DeleteAddressSets(asf.nbClient, asv4, asv6)
+	err := ovnops.DeleteAddressSets(asf.nbClient, asv4, asv6)
 	if err != nil {
 		return fmt.Errorf("failed to delete address sets %s: %v", getOvnAddressSetsName(dbIDs), err)
 	}
@@ -283,9 +284,9 @@ func (asf *ovnAddressSetFactory) ensureOvnAddressSetOps(addresses []string, dbID
 		// overwrite addresses, EnsureAddressSet doesn't do that
 		uniqAddresses := getUniqueAddresses(addresses)
 		addrSet.Addresses = uniqAddresses
-		ops, err = libovsdbops.CreateOrUpdateAddressSetsOps(asf.nbClient, ops, addrSet)
+		ops, err = ovnops.CreateOrUpdateAddressSetsOps(asf.nbClient, ops, addrSet)
 	} else {
-		ops, err = libovsdbops.CreateAddressSetsOps(asf.nbClient, ops, addrSet)
+		ops, err = ovnops.CreateAddressSetsOps(asf.nbClient, ops, addrSet)
 	}
 
 	// UUID should always be set if no error, check anyway
@@ -538,7 +539,7 @@ func (as *ovnAddressSet) setAddresses(addresses []string) error {
 		Name:      as.hashName,
 		Addresses: uniqAddresses,
 	}
-	err := libovsdbops.UpdateAddressSetsAddresses(as.nbClient, &addrset)
+	err := ovnops.UpdateAddressSetsAddresses(as.nbClient, &addrset)
 	if err != nil {
 		return fmt.Errorf("failed to update address set addresses %+v: %v", addrset, err)
 	}
@@ -552,7 +553,7 @@ func (as *ovnAddressSet) getAddresses() ([]string, error) {
 		UUID: as.uuid,
 		Name: as.hashName,
 	}
-	addrset, err := libovsdbops.GetAddressSet(as.nbClient, addrset)
+	addrset, err := ovnops.GetAddressSet(as.nbClient, addrset)
 	if err != nil {
 		return nil, err
 	}
@@ -578,7 +579,7 @@ func (as *ovnAddressSet) addAddresses(addresses []string) ([]ovsdb.Operation, er
 		UUID: as.uuid,
 		Name: as.hashName,
 	}
-	ops, err := libovsdbops.AddAddressesToAddressSetOps(as.nbClient, nil, &addrset, uniqAddresses...)
+	ops, err := ovnops.AddAddressesToAddressSetOps(as.nbClient, nil, &addrset, uniqAddresses...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add addresses %v to address set %+v: %v", uniqAddresses, addrset, err)
 	}
@@ -614,7 +615,7 @@ func (as *ovnAddressSet) deleteAddresses(addresses []string) ([]ovsdb.Operation,
 		UUID: as.uuid,
 		Name: as.hashName,
 	}
-	ops, err := libovsdbops.DeleteAddressesFromAddressSetOps(as.nbClient, nil, &addrset, uniqAddresses...)
+	ops, err := ovnops.DeleteAddressesFromAddressSetOps(as.nbClient, nil, &addrset, uniqAddresses...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete addresses %v from address set %+v: %v", uniqAddresses, addrset, err)
 	}
@@ -628,7 +629,7 @@ func (as *ovnAddressSet) destroy() error {
 		UUID: as.uuid,
 		Name: as.hashName,
 	}
-	err := libovsdbops.DeleteAddressSets(as.nbClient, &addrset)
+	err := ovnops.DeleteAddressSets(as.nbClient, &addrset)
 	if err != nil {
 		return fmt.Errorf("failed to delete address set %+v: %v", addrset, err)
 	}

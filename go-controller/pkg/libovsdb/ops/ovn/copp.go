@@ -1,9 +1,10 @@
-package ops
+package ovn
 
 import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -12,20 +13,20 @@ type coppPredicate func(*nbdb.Copp) bool
 // CreateOrUpdateCOPPsOps creates or updates the provided COPP returning the
 // corresponding ops
 func CreateOrUpdateCOPPsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, copps ...*nbdb.Copp) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(copps))
+	opModels := make([]libovsdbops.OperationModel, 0, len(copps))
 	for i := range copps {
 		// can't use i in the predicate, for loop replaces it in-memory
 		copp := copps[i]
-		opModel := operationModel{
+		opModel := libovsdbops.OperationModel{
 			Model:          copp,
-			OnModelUpdates: onModelUpdatesAllNonDefault(),
+			OnModelUpdates: libovsdbops.OnModelUpdatesAllNonDefault(),
 			ErrNotFound:    false,
 			BulkOp:         false,
 		}
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
@@ -33,7 +34,7 @@ func CreateOrUpdateCOPPsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operatio
 // corresponding ops
 func DeleteCOPPsWithPredicateOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, p coppPredicate) ([]ovsdb.Operation, error) {
 	copp := nbdb.Copp{}
-	opModels := []operationModel{
+	opModels := []libovsdbops.OperationModel{
 		{
 			Model:          &copp,
 			ModelPredicate: p,
@@ -42,6 +43,6 @@ func DeleteCOPPsWithPredicateOps(nbClient libovsdbclient.Client, ops []ovsdb.Ope
 		},
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	return modelClient.DeleteOps(ops, opModels...)
 }

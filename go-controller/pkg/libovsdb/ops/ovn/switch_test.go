@@ -1,32 +1,33 @@
-package ops
+package ovn
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 )
 
 func TestRemoveACLsFromSwitches(t *testing.T) {
 	fakeACL1 := nbdb.ACL{
-		UUID: buildNamedUUID(),
+		UUID: libovsdbops.BuildNamedUUID(),
 	}
 
 	fakeACL2 := nbdb.ACL{
-		UUID: buildNamedUUID(),
+		UUID: libovsdbops.BuildNamedUUID(),
 	}
 
 	fakeSwitch1 := nbdb.LogicalSwitch{
 		Name: "sw1",
-		UUID: buildNamedUUID(),
+		UUID: libovsdbops.BuildNamedUUID(),
 		ACLs: []string{fakeACL1.UUID},
 	}
 
 	fakeSwitch2 := nbdb.LogicalSwitch{
 		Name: "sw2",
-		UUID: buildNamedUUID(),
+		UUID: libovsdbops.BuildNamedUUID(),
 		ACLs: []string{fakeACL1.UUID, fakeACL2.UUID},
 	}
 
@@ -34,7 +35,7 @@ func TestRemoveACLsFromSwitches(t *testing.T) {
 	// can handle this case
 	fakeSwitch3 := nbdb.LogicalSwitch{
 		Name: "sw3",
-		UUID: buildNamedUUID(),
+		UUID: libovsdbops.BuildNamedUUID(),
 	}
 
 	tests := []struct {
@@ -126,19 +127,19 @@ func TestRemoveACLsFromSwitches(t *testing.T) {
 func TestDeleteSwitchesWithPredicateOps(t *testing.T) {
 	fakeSwitch1 := nbdb.LogicalSwitch{
 		Name:        "sw1",
-		UUID:        buildNamedUUID(),
+		UUID:        libovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "a"},
 	}
 
 	fakeSwitch2 := nbdb.LogicalSwitch{
 		Name:        "sw2",
-		UUID:        buildNamedUUID(),
+		UUID:        libovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "a"},
 	}
 
 	fakeSwitch3 := nbdb.LogicalSwitch{
 		Name:        "sw3",
-		UUID:        buildNamedUUID(),
+		UUID:        libovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "b"},
 	}
 
@@ -180,7 +181,7 @@ func TestDeleteSwitchesWithPredicateOps(t *testing.T) {
 				t.Fatal(fmt.Errorf("DeleteLogicalSwitchesWithPredicateOps() error = %v", err))
 			}
 
-			_, err = TransactAndCheck(nbClient, ops)
+			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
 			if err != nil && !tt.expectErr {
 				t.Fatal(fmt.Errorf("TransactAndCheck() error = %v", err))
 			}

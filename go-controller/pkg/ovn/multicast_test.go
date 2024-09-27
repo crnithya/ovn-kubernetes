@@ -9,7 +9,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -57,7 +58,7 @@ func getMulticastDefaultExpectedData(clusterPortGroup, clusterRtrPortGroup *nbdb
 	match := getMulticastACLMatch()
 	aclIDs := getDefaultMcastACLDbIDs(mcastDefaultDenyID, libovsdbutil.ACLEgress, DefaultNetworkControllerName)
 	aclName := libovsdbutil.GetACLName(aclIDs)
-	defaultDenyEgressACL := libovsdbops.BuildACL(
+	defaultDenyEgressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastDenyPriority,
@@ -76,7 +77,7 @@ func getMulticastDefaultExpectedData(clusterPortGroup, clusterRtrPortGroup *nbdb
 
 	aclIDs = getDefaultMcastACLDbIDs(mcastDefaultDenyID, libovsdbutil.ACLIngress, DefaultNetworkControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
-	defaultDenyIngressACL := libovsdbops.BuildACL(
+	defaultDenyIngressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastDenyPriority,
@@ -95,7 +96,7 @@ func getMulticastDefaultExpectedData(clusterPortGroup, clusterRtrPortGroup *nbdb
 	aclIDs = getDefaultMcastACLDbIDs(mcastAllowInterNodeID, libovsdbutil.ACLEgress, DefaultNetworkControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
 	egressMatch := libovsdbutil.GetACLMatch(clusterRtrPortGroup.Name, match, libovsdbutil.ACLEgress)
-	defaultAllowEgressACL := libovsdbops.BuildACL(
+	defaultAllowEgressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastAllowPriority,
@@ -115,7 +116,7 @@ func getMulticastDefaultExpectedData(clusterPortGroup, clusterRtrPortGroup *nbdb
 	aclIDs = getDefaultMcastACLDbIDs(mcastAllowInterNodeID, libovsdbutil.ACLIngress, DefaultNetworkControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
 	ingressMatch := libovsdbutil.GetACLMatch(clusterRtrPortGroup.Name, match, libovsdbutil.ACLIngress)
-	defaultAllowIngressACL := libovsdbops.BuildACL(
+	defaultAllowIngressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastAllowPriority,
@@ -189,7 +190,7 @@ func getMulticastPolicyExpectedData(ns string, ports []string) []libovsdb.TestDa
 
 	aclIDs := getNamespaceMcastACLDbIDs(ns, libovsdbutil.ACLEgress, DefaultNetworkControllerName)
 	aclName := libovsdbutil.GetACLName(aclIDs)
-	egressACL := libovsdbops.BuildACL(
+	egressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastAllowPriority,
@@ -208,7 +209,7 @@ func getMulticastPolicyExpectedData(ns string, ports []string) []libovsdb.TestDa
 
 	aclIDs = getNamespaceMcastACLDbIDs(ns, libovsdbutil.ACLIngress, DefaultNetworkControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
-	ingressACL := libovsdbops.BuildACL(
+	ingressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastAllowPriority,

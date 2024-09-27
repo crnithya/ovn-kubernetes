@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ovn-org/libovsdb/client"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -46,7 +46,7 @@ func ExtractPortAddresses(lsp *nbdb.LogicalSwitchPort) (net.HardwareAddr, []net.
 // GetLRPAddrs returns the addresses for the given logical router port
 func GetLRPAddrs(nbClient client.Client, portName string) ([]*net.IPNet, error) {
 	lrp := &nbdb.LogicalRouterPort{Name: portName}
-	lrp, err := libovsdbops.GetLogicalRouterPort(nbClient, lrp)
+	lrp, err := ovnops.GetLogicalRouterPort(nbClient, lrp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get router port %s: %w", portName, err)
 	}

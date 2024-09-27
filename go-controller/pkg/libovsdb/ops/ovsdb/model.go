@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import (
 	"fmt"
@@ -489,8 +489,8 @@ func buildFailOnDuplicateOps(c client.Client, m model.Model) ([]ovsdb.Operation,
 	return c.WhereAny(m, cond).Wait(ovsdb.WaitConditionNotEqual, &timeout, m, field)
 }
 
-// getAllUpdatableFields returns a list of all of the columns/fields that can be updated for a model
-func getAllUpdatableFields(model model.Model) []interface{} {
+// GetAllUpdatableFields returns a list of all of the columns/fields that can be updated for a model
+func GetAllUpdatableFields(model model.Model) []interface{} {
 	switch t := model.(type) {
 	case *nbdb.LogicalSwitchPort:
 		return []interface{}{&t.Addresses, &t.Type, &t.TagRequest, &t.Options, &t.PortSecurity}

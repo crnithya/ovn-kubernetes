@@ -14,7 +14,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/generator/udn"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	nad "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/network-attach-def-controller"
@@ -463,7 +464,7 @@ func (oc *SecondaryLayer3NetworkController) Cleanup() error {
 	netName := oc.GetNetworkName()
 	klog.Infof("Delete OVN logical entities for %s network controller of network %s", types.Layer3Topology, netName)
 	// first delete node logical switches
-	ops, err = libovsdbops.DeleteLogicalSwitchesWithPredicateOps(oc.nbClient, ops,
+	ops, err = ovnops.DeleteLogicalSwitchesWithPredicateOps(oc.nbClient, ops,
 		func(item *nbdb.LogicalSwitch) bool {
 			return item.ExternalIDs[types.NetworkExternalID] == netName
 		})
@@ -488,7 +489,7 @@ func (oc *SecondaryLayer3NetworkController) Cleanup() error {
 	})
 
 	// now delete cluster router
-	ops, err = libovsdbops.DeleteLogicalRoutersWithPredicateOps(oc.nbClient, ops,
+	ops, err = ovnops.DeleteLogicalRoutersWithPredicateOps(oc.nbClient, ops,
 		func(item *nbdb.LogicalRouter) bool {
 			return item.ExternalIDs[types.NetworkExternalID] == netName
 		})
@@ -773,7 +774,7 @@ func (oc *SecondaryLayer3NetworkController) addUDNNodeSubnetEgressSNAT(localPodS
 	router := &nbdb.LogicalRouter{
 		Name: oc.GetNetworkScopedClusterRouterName(),
 	}
-	if err := libovsdbops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
+	if err := ovnops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
 		return fmt.Errorf("failed to update SNAT for node subnet on router: %q for network %q, error: %w",
 			oc.GetNetworkScopedClusterRouterName(), oc.GetNetworkName(), err)
 	}
@@ -861,7 +862,7 @@ func (oc *SecondaryLayer3NetworkController) syncNodes(nodes []interface{}) error
 	p := func(item *nbdb.LogicalSwitch) bool {
 		return len(item.OtherConfig) > 0 && item.ExternalIDs[types.NetworkExternalID] == oc.GetNetworkName()
 	}
-	nodeSwitches, err := libovsdbops.FindLogicalSwitchesWithPredicate(oc.nbClient, p)
+	nodeSwitches, err := ovnops.FindLogicalSwitchesWithPredicate(oc.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("failed to get node logical switches which have other-config set for network %s: %v", oc.GetNetworkName(), err)
 	}

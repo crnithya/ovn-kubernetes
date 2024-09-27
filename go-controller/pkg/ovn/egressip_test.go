@@ -13,7 +13,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	egressipv1 "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressip/v1"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	egresssvc "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/controller/egressservice"
@@ -6969,7 +6969,7 @@ var _ = ginkgo.Describe("OVN master EgressIP Operations", func() {
 					return len(egressPod1.Annotations)
 				}, 5).Should(gomega.Equal(0))
 
-				_, err = libovsdbops.GetLogicalSwitchPort(fakeOvn.controller.nbClient, &nbdb.LogicalSwitchPort{Name: podLSP.Name})
+				_, err = ovnops.GetLogicalSwitchPort(fakeOvn.controller.nbClient, &nbdb.LogicalSwitchPort{Name: podLSP.Name})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Delete the pod to trigger the cleanup failure
@@ -6982,7 +6982,7 @@ var _ = ginkgo.Describe("OVN master EgressIP Operations", func() {
 
 				// expect pod's port to have been gone, while egressIPPod still being present
 				gomega.Eventually(func() error {
-					_, err := libovsdbops.GetLogicalSwitchPort(fakeOvn.controller.nbClient, &nbdb.LogicalSwitchPort{Name: podLSP.Name})
+					_, err := ovnops.GetLogicalSwitchPort(fakeOvn.controller.nbClient, &nbdb.LogicalSwitchPort{Name: podLSP.Name})
 					if err != nil {
 						return err
 					}

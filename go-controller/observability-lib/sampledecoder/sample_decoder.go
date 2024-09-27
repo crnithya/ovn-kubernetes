@@ -8,7 +8,8 @@ import (
 
 	"github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/observability-lib/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/observability"
 )
@@ -119,7 +120,7 @@ func findACLBySample(nbClient client.Client, acl *nbdb.ACL) ([]*nbdb.ACL, error)
 
 func (d *SampleDecoder) DecodeCookieIDs(obsDomainID, obsPointID uint32) (string, error) {
 	// Find sample using obsPointID
-	sample, err := libovsdbops.FindSample(d.nbClient, int(obsPointID))
+	sample, err := ovnops.FindSample(d.nbClient, int(obsPointID))
 	if err != nil || sample == nil {
 		return "", fmt.Errorf("find sample failed: %w", err)
 	}

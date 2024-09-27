@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -42,12 +43,12 @@ func (oc *DefaultNetworkController) addHairpinAllowACL() error {
 	egressACL := libovsdbutil.BuildACL(egressACLIDs, types.DefaultAllowPriority, match,
 		nbdb.ACLActionAllowRelated, nil, libovsdbutil.LportEgressAfterLB)
 
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(oc.nbClient, nil, nil, ingressACL, egressACL)
+	ops, err := ovnops.CreateOrUpdateACLsOps(oc.nbClient, nil, nil, ingressACL, egressACL)
 	if err != nil {
 		return fmt.Errorf("failed to create or update hairpin allow ACL %v", err)
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(oc.nbClient, ops, oc.getClusterPortGroupName(types.ClusterPortGroupNameBase),
+	ops, err = ovnops.AddACLsToPortGroupOps(oc.nbClient, ops, oc.getClusterPortGroupName(types.ClusterPortGroupNameBase),
 		ingressACL, egressACL)
 	if err != nil {
 		return fmt.Errorf("failed to add ACL hairpin allow acl to port group: %v", err)

@@ -8,7 +8,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"strings"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -114,7 +115,7 @@ func createInitialPG(hashedName, name, networkName string, portUUIDs, aclUUIDs [
 }
 
 func createReferencingACL(hashedName string, externalIDs map[string]string) *nbdb.ACL {
-	acl := libovsdbops.BuildACL(
+	acl := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionToLport,
 		types.EgressFirewallStartPriority,

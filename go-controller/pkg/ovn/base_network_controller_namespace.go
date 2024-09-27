@@ -10,7 +10,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -186,7 +187,7 @@ func (bnc *BaseNetworkController) syncNamespaces(namespaces []interface{}) error
 		return !bnc.needNamespacedPortGroup() || !expectedNs[namespaceName]
 	})
 
-	err = libovsdbops.DeletePortGroupsWithPredicate(bnc.nbClient, p)
+	err = ovnops.DeletePortGroupsWithPredicate(bnc.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to delete stale namespace port groups: %v", err)
 	}
@@ -421,7 +422,7 @@ func (bnc *BaseNetworkController) createNamespacePortGroup(ns string) (string, e
 	pgIDs := getNamespacePortGroupDbIDs(ns, bnc.controllerName)
 	// create empty port group if it doesn't exist
 	pg := libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-	err := libovsdbops.CreatePortGroup(bnc.nbClient, pg)
+	err := ovnops.CreatePortGroup(bnc.nbClient, pg)
 
 	return pg.Name, err
 }

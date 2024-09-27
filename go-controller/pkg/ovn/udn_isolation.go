@@ -9,7 +9,8 @@ import (
 	utilnet "k8s.io/utils/net"
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -35,14 +36,14 @@ func (oc *DefaultNetworkController) setupUDNACLs(mgmtPortIPs []net.IP) error {
 	pg := &nbdb.PortGroup{
 		Name: libovsdbutil.GetPortGroupName(pgIDs),
 	}
-	_, err := libovsdbops.GetPortGroup(oc.nbClient, pg)
+	_, err := ovnops.GetPortGroup(oc.nbClient, pg)
 	if err != nil {
 		if !errors.Is(err, libovsdbclient.ErrNotFound) {
 			return err
 		}
 		// we didn't find an existing secondaryPodsPG, let's create a new empty PG
 		pg = libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-		err = libovsdbops.CreateOrUpdatePortGroups(oc.nbClient, pg)
+		err = ovnops.CreateOrUpdatePortGroups(oc.nbClient, pg)
 		if err != nil {
 			klog.Errorf("Failed to create secondary pods port group: %v", err)
 			return err
@@ -108,12 +109,12 @@ func (oc *DefaultNetworkController) setupUDNACLs(mgmtPortIPs []net.IP) error {
 	match = libovsdbutil.GetACLMatch(pgName, match, libovsdbutil.ACLIngress)
 	ingressAllowACL := libovsdbutil.BuildACL(ingressAllowIDs, types.PrimaryUDNAllowPriority, match, nbdb.ACLActionAllowRelated, nil, libovsdbutil.LportIngress)
 
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(oc.nbClient, nil, oc.GetSamplingConfig(), egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
+	ops, err := ovnops.CreateOrUpdateACLsOps(oc.nbClient, nil, oc.GetSamplingConfig(), egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
 	if err != nil {
 		return fmt.Errorf("failed to create or update UDN ACLs: %v", err)
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(oc.nbClient, ops, pgName, egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
+	ops, err = ovnops.AddACLsToPortGroupOps(oc.nbClient, ops, pgName, egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
 	if err != nil {
 		return fmt.Errorf("failed to add UDN ACLs to portGroup %s: %v", pgName, err)
 	}

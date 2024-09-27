@@ -6,7 +6,8 @@ import (
 	"time"
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
@@ -47,13 +48,13 @@ func (c *Controller) repairAdminNetworkPolicies() error {
 		return !ok // return if it doesn't exist in the cache
 	})
 
-	stalePGs, err := libovsdbops.FindPortGroupsWithPredicate(c.nbClient, p)
+	stalePGs, err := ovnops.FindPortGroupsWithPredicate(c.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to fetch port groups by predicate, err: %v", err)
 	}
 	if len(stalePGs) > 0 {
 		klog.Infof("Deleting Stale PortGroups +%v", stalePGs)
-		err = libovsdbops.DeletePortGroupsWithPredicate(c.nbClient, p)
+		err = ovnops.DeletePortGroupsWithPredicate(c.nbClient, p)
 		if err != nil {
 			return fmt.Errorf("unable to delete stale port groups, err: %v", err)
 		}
@@ -70,7 +71,7 @@ func (c *Controller) repairAdminNetworkPolicies() error {
 		return !ok // if not present in cache then its stale
 	}
 	asPredicate := libovsdbops.GetPredicate[*nbdb.AddressSet](asPredicateIDs, asPredicateFunc)
-	if err := libovsdbops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
+	if err := ovnops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
 		return fmt.Errorf("failed to remove stale ANP address sets, err: %v", err)
 	}
 	return nil
@@ -110,13 +111,13 @@ func (c *Controller) repairBaselineAdminNetworkPolicy() error {
 		_, ok := existingBANPs[pg.ExternalIDs[libovsdbops.ObjectNameKey.String()]]
 		return !ok // return if it doesn't exist in the cache
 	})
-	stalePGs, err := libovsdbops.FindPortGroupsWithPredicate(c.nbClient, p)
+	stalePGs, err := ovnops.FindPortGroupsWithPredicate(c.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to fetch port groups by predicate, err: %v", err)
 	}
 	if len(stalePGs) > 0 {
 		klog.Infof("Deleting Stale PortGroups +%v", stalePGs)
-		err = libovsdbops.DeletePortGroupsWithPredicate(c.nbClient, p)
+		err = ovnops.DeletePortGroupsWithPredicate(c.nbClient, p)
 		if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 			// if the ACL or PG is already gone, then nothing to do; unreferences ACLs should be autoremoved
 			return fmt.Errorf("unable to delete stale port groups, err: %v", err)
@@ -135,7 +136,7 @@ func (c *Controller) repairBaselineAdminNetworkPolicy() error {
 		return !ok // if not present in cache then its stale
 	}
 	asPredicate := libovsdbops.GetPredicate[*nbdb.AddressSet](asPredicateIDs, asPredicateFunc)
-	if err := libovsdbops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
+	if err := ovnops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
 		return fmt.Errorf("failed to remove stale BANP address sets, err: %v", err)
 	}
 	return nil

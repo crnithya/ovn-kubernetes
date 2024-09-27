@@ -6,7 +6,7 @@ import (
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	mock "github.com/stretchr/testify/mock"
 
-	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 
 	ovsdb "github.com/ovn-org/libovsdb/ovsdb"
 )

@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	ovnkubeutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -110,7 +111,7 @@ func BuildACL(dbIDs *libovsdbops.DbObjectIDs, priority int, match, action string
 	externalIDs := dbIDs.GetExternalIDs()
 	aclName := GetACLName(dbIDs)
 	log, logSeverity := getLogSeverity(action, logLevels)
-	ACL := libovsdbops.BuildACL(
+	ACL := ovnops.BuildACL(
 		aclName,
 		direction,
 		priority,
@@ -185,7 +186,7 @@ func getLogSeverity(action string, aclLogging *ACLLoggingLevels) (log bool, seve
 // UpdateACLLoggingWithPredicate finds all ACLs based on a given predicate, updates log settings,
 // then transacts these changes with a single transaction.
 func UpdateACLLoggingWithPredicate(nbClient libovsdbclient.Client, p func(*nbdb.ACL) bool, aclLogging *ACLLoggingLevels) error {
-	ACLs, err := libovsdbops.FindACLsWithPredicate(nbClient, p)
+	ACLs, err := ovnops.FindACLsWithPredicate(nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to list ACLs with predicate, err: %v", err)
 	}
@@ -198,9 +199,9 @@ func UpdateACLLogging(nbClient libovsdbclient.Client, ACLs []*nbdb.ACL, aclLoggi
 	}
 	for i := range ACLs {
 		log, severity := getLogSeverity(ACLs[i].Action, aclLogging)
-		libovsdbops.SetACLLogging(ACLs[i], severity, log)
+		ovnops.SetACLLogging(ACLs[i], severity, log)
 	}
-	ops, err := libovsdbops.UpdateACLsLoggingOps(nbClient, nil, ACLs...)
+	ops, err := ovnops.UpdateACLsLoggingOps(nbClient, nil, ACLs...)
 	if err != nil {
 		return fmt.Errorf("unable to get ACL logging ops: %v", err)
 	}
