@@ -24,7 +24,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -452,7 +452,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 
 			// the best way to check if a node is deleted is to check some of the explicitly deleted elements
 			gomega.Eventually(func() ([]string, error) {
-				clusterRouter, err := libovsdbops.GetLogicalRouter(clusterController.nbClient, &nbdb.LogicalRouter{Name: types.OVNClusterRouter})
+				clusterRouter, err := ovnops.GetLogicalRouter(clusterController.nbClient, &nbdb.LogicalRouter{Name: types.OVNClusterRouter})
 				if err != nil {
 					return nil, err
 				}
@@ -460,7 +460,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.HaveLen(0))
 
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "jtor-GR_node1"})
+				_, err := ovnops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "jtor-GR_node1"})
 				if err != nil {
 					return err
 				}
@@ -469,7 +469,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.Equal(libovsdbclient.ErrNotFound))
 
 			gomega.Eventually(func() ([]string, error) {
-				ovnJoinSwitch, err := libovsdbops.GetLogicalSwitch(clusterController.nbClient, &nbdb.LogicalSwitch{Name: "join"})
+				ovnJoinSwitch, err := ovnops.GetLogicalSwitch(clusterController.nbClient, &nbdb.LogicalSwitch{Name: "join"})
 				if err != nil {
 					return nil, err
 				}
@@ -486,7 +486,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -501,7 +501,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
+				logicalRouterPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -510,7 +510,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.HaveLen(0))
 
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
+				_, err := ovnops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
 				if err != nil {
 					return err
 				}
@@ -913,7 +913,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 
 			// the best way to check if a node is deleted is to check some of the explicitly deleted elements
 			gomega.Eventually(func() ([]string, error) {
-				clusterRouter, err := libovsdbops.GetLogicalRouter(clusterController.nbClient, &nbdb.LogicalRouter{Name: types.OVNClusterRouter})
+				clusterRouter, err := ovnops.GetLogicalRouter(clusterController.nbClient, &nbdb.LogicalRouter{Name: types.OVNClusterRouter})
 				if err != nil {
 					return nil, err
 				}
@@ -921,7 +921,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 20).Should(gomega.HaveLen(0))
 
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "jtor-GR_node1"})
+				_, err := ovnops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "jtor-GR_node1"})
 				if err != nil {
 					return err
 				}
@@ -930,7 +930,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.Equal(libovsdbclient.ErrNotFound))
 
 			gomega.Eventually(func() ([]string, error) {
-				ovnJoinSwitch, err := libovsdbops.GetLogicalSwitch(clusterController.nbClient, &nbdb.LogicalSwitch{Name: "join"})
+				ovnJoinSwitch, err := ovnops.GetLogicalSwitch(clusterController.nbClient, &nbdb.LogicalSwitch{Name: "join"})
 				if err != nil {
 					return nil, err
 				}
@@ -947,7 +947,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -962,7 +962,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
+				logicalRouterPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -971,7 +971,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.HaveLen(0))
 
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
+				_, err := ovnops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
 				if err != nil {
 					return err
 				}
@@ -1170,7 +1170,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 						item.Nexthop == "100.64.0.1" &&
 						item.IPPrefix == hoNodeSubnet
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1183,7 +1183,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 						item.Nexthop == nodeHOIP &&
 						item.IPPrefix == hoNodeSubnet
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1197,7 +1197,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 						item.Action == "reroute" &&
 						item.Nexthops[0] == nodeHOIP
 				}
-				logicalRouterPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
+				logicalRouterPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1379,7 +1379,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1390,7 +1390,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 				p := func(item *nbdb.LogicalRouterPolicy) bool {
 					return strings.Contains(item.ExternalIDs["name"], "hybrid-subnet-node1")
 				}
-				logicalRouterPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
+				logicalRouterPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1792,7 +1792,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
+				logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1807,7 +1807,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 					}
 					return false
 				}
-				logicalRouterPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
+				logicalRouterPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(clusterController.nbClient, p)
 				if err != nil {
 					return nil, err
 				}
@@ -1816,7 +1816,7 @@ var _ = ginkgo.Describe("Hybrid SDN Master Operations", func() {
 			}, 2).Should(gomega.HaveLen(0))
 
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
+				_, err := ovnops.GetLogicalSwitchPort(clusterController.nbClient, &nbdb.LogicalSwitchPort{Name: "int-node1"})
 				if err != nil {
 					return err
 				}

@@ -18,7 +18,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/generator/udn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/persistentips"
@@ -755,7 +756,7 @@ func cleanupPolicyLogicalEntities(nbClient libovsdbclient.Client, ops []ovsdb.Op
 	portGroupPredicate := func(item *nbdb.PortGroup) bool {
 		return item.ExternalIDs[libovsdbops.OwnerControllerKey.String()] == controllerName
 	}
-	ops, err = libovsdbops.DeletePortGroupsWithPredicateOps(nbClient, ops, portGroupPredicate)
+	ops, err = ovnops.DeletePortGroupsWithPredicateOps(nbClient, ops, portGroupPredicate)
 	if err != nil {
 		return ops, fmt.Errorf("failed to get ops to delete port groups owned by controller %s", controllerName)
 	}
@@ -763,7 +764,7 @@ func cleanupPolicyLogicalEntities(nbClient libovsdbclient.Client, ops []ovsdb.Op
 	asPredicate := func(item *nbdb.AddressSet) bool {
 		return item.ExternalIDs[libovsdbops.OwnerControllerKey.String()] == controllerName
 	}
-	ops, err = libovsdbops.DeleteAddressSetsWithPredicateOps(nbClient, ops, asPredicate)
+	ops, err = ovnops.DeleteAddressSetsWithPredicateOps(nbClient, ops, asPredicate)
 	if err != nil {
 		return ops, fmt.Errorf("failed to get ops to delete address sets owned by controller %s", controllerName)
 	}
@@ -839,7 +840,7 @@ func (bsnc *BaseSecondaryNetworkController) buildUDNEgressSNAT(localPodSubnets [
 		if masqIP == nil {
 			return nil, fmt.Errorf("masquerade IP cannot be empty network %s (%d): %v", bsnc.GetNetworkName(), networkID, err)
 		}
-		snats = append(snats, libovsdbops.BuildSNATWithMatch(&masqIP.ManagementPort.IP, localPodSubnet, outputPort,
+		snats = append(snats, ovnops.BuildSNATWithMatch(&masqIP.ManagementPort.IP, localPodSubnet, outputPort,
 			extIDs, getMasqueradeManagementIPSNATMatch(dstMac.String())))
 	}
 	return snats, nil

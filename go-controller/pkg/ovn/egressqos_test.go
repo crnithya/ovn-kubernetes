@@ -12,7 +12,7 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	egressqosapi "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressqos/v1"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -1084,7 +1084,7 @@ func createNodeAndLS(fakeOVN *FakeOVN, name, zone string) (*v1.Node, *nbdb.Logic
 		Name: name,
 	}
 
-	if err := libovsdbops.CreateOrUpdateLogicalSwitch(fakeOVN.nbClient, logicalSwitch); err != nil {
+	if err := ovnops.CreateOrUpdateLogicalSwitch(fakeOVN.nbClient, logicalSwitch); err != nil {
 		return nil, nil, fmt.Errorf("failed to create logical switch %s, error: %v", name, err)
 
 	}

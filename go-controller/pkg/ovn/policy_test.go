@@ -16,7 +16,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -90,7 +91,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	egressPGName := fakeController.defaultDenyPortGroupName(namespace, libovsdbutil.ACLEgress)
 	shouldBeLogged := denyLogSeverity != ""
 	aclIDs := fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLEgress, defaultDenyACL)
-	egressDenyACL := libovsdbops.BuildACL(
+	egressDenyACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionFromLport,
 		types.DefaultDenyPriority,
@@ -108,7 +109,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	egressDenyACL.UUID = aclIDs.String() + "-UUID"
 
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLEgress, arpAllowACL)
-	egressAllowACL := libovsdbops.BuildACL(
+	egressAllowACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionFromLport,
 		types.DefaultAllowPriority,
@@ -127,7 +128,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 
 	ingressPGName := fakeController.defaultDenyPortGroupName(namespace, libovsdbutil.ACLIngress)
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLIngress, defaultDenyACL)
-	ingressDenyACL := libovsdbops.BuildACL(
+	ingressDenyACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultDenyPriority,
@@ -143,7 +144,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	ingressDenyACL.UUID = aclIDs.String() + "-UUID"
 
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLIngress, arpAllowACL)
-	ingressAllowACL := libovsdbops.BuildACL(
+	ingressAllowACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -279,7 +280,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 			action = nbdb.ACLActionAllowStateless
 		}
 		dbIDs := gp.getNetpolACLDbIDs(emptyIdx, libovsdbutil.UnspecifiedL4Protocol)
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -298,7 +299,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 	for i, ipBlock := range ipBlocks {
 		match := fmt.Sprintf("ip4.%s == %s && %s == @%s", ipDir, ipBlock, portDir, pgName)
 		dbIDs := gp.getNetpolACLDbIDs(i, libovsdbutil.UnspecifiedL4Protocol)
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -316,7 +317,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 	}
 	for _, v := range params.tcpPeerPorts {
 		dbIDs := gp.getNetpolACLDbIDs(emptyIdx, "tcp")
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -459,7 +460,7 @@ func getHairpinningACLsV4AndPortGroupForNetwork(netInfo util.NetInfo, ports []st
 	clusterPortGroup := newNetworkClusterPortGroup(netInfo)
 	fakeController := getFakeController(controllerName)
 	egressIDs := fakeController.getNetpolDefaultACLDbIDs("Egress")
-	egressACL := libovsdbops.BuildACL(
+	egressACL := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionFromLport,
 		types.DefaultAllowPriority,
@@ -476,7 +477,7 @@ func getHairpinningACLsV4AndPortGroupForNetwork(netInfo util.NetInfo, ports []st
 	)
 	egressACL.UUID = fmt.Sprintf("hp-egress-%s", controllerName)
 	ingressIDs := fakeController.getNetpolDefaultACLDbIDs("Ingress")
-	ingressACL := libovsdbops.BuildACL(
+	ingressACL := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -2097,7 +2098,7 @@ func getAllowFromNodeExpectedACL(nodeName, mgmtIP string, logicalSwitch *nbdb.Lo
 	match := fmt.Sprintf("%s.src==%s", ipFamily, mgmtIP)
 
 	dbIDs := getAllowFromNodeACLDbIDs(nodeName, mgmtIP, controllerName)
-	nodeACL := libovsdbops.BuildACL(
+	nodeACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(dbIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -2263,7 +2264,7 @@ var _ = ginkgo.Describe("OVN NetworkPolicy Low-Level Operations", func() {
 		}
 		asMatch := asMatch(hashedASNames)
 		match := fmt.Sprintf("ip4.src == {%s} && outport == @%s", asMatch, pgName)
-		acl := libovsdbops.BuildACL(libovsdbutil.GetACLName(aclIDs), nbdb.ACLDirectionToLport, types.DefaultAllowPriority, match,
+		acl := ovnops.BuildACL(libovsdbutil.GetACLName(aclIDs), nbdb.ACLDirectionToLport, types.DefaultAllowPriority, match,
 			nbdb.ACLActionAllowRelated, types.OvnACLLoggingMeter, aclLogging.Allow, true, aclIDs.GetExternalIDs(), nil,
 			types.DefaultACLTier)
 		return acl

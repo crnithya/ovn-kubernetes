@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"golang.org/x/net/context"
@@ -8,53 +8,54 @@ import (
 	"github.com/ovn-org/libovsdb/model"
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
 func CreateOrUpdateSampleCollector(nbClient libovsdbclient.Client, collector *nbdb.SampleCollector) error {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          collector,
-		OnModelUpdates: onModelUpdatesAllNonDefault(),
+		OnModelUpdates: libovsdbops.OnModelUpdatesAllNonDefault(),
 		ErrNotFound:    false,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err := m.CreateOrUpdate(opModel)
 	return err
 }
 
 func UpdateSampleCollectorExternalIDs(nbClient libovsdbclient.Client, collector *nbdb.SampleCollector) error {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          collector,
 		OnModelUpdates: []interface{}{&collector.ExternalIDs},
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	_, err := m.CreateOrUpdate(opModel)
 	return err
 }
 
 func DeleteSampleCollector(nbClient libovsdbclient.Client, collector *nbdb.SampleCollector) error {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:       collector,
 		ErrNotFound: false,
 		BulkOp:      false,
 	}
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.Delete(opModel)
 }
 
 func DeleteSampleCollectorWithPredicate(nbClient libovsdbclient.Client, p func(collector *nbdb.SampleCollector) bool) error {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          &nbdb.SampleCollector{},
 		ModelPredicate: p,
 		ErrNotFound:    false,
 		BulkOp:         true,
 	}
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.Delete(opModel)
 }
 
@@ -75,31 +76,31 @@ func ListSampleCollectors(nbClient libovsdbclient.Client) ([]*nbdb.SampleCollect
 }
 
 func CreateOrUpdateSamplingAppsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, samplingApps ...*nbdb.SamplingApp) ([]libovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(samplingApps))
+	opModels := make([]libovsdbops.OperationModel, 0, len(samplingApps))
 	for i := range samplingApps {
 		// can't use i in the predicate, for loop replaces it in-memory
 		samplingApp := samplingApps[i]
-		opModel := operationModel{
+		opModel := libovsdbops.OperationModel{
 			Model:          samplingApp,
-			OnModelUpdates: onModelUpdatesAllNonDefault(),
+			OnModelUpdates: libovsdbops.OnModelUpdatesAllNonDefault(),
 			ErrNotFound:    false,
 			BulkOp:         false,
 		}
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
 func DeleteSamplingAppsWithPredicate(nbClient libovsdbclient.Client, p func(collector *nbdb.SamplingApp) bool) error {
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          &nbdb.SamplingApp{},
 		ModelPredicate: p,
 		ErrNotFound:    false,
 		BulkOp:         true,
 	}
-	m := newModelClient(nbClient)
+	m := libovsdbops.NewModelClient(nbClient)
 	return m.Delete(opModel)
 }
 
@@ -112,13 +113,13 @@ func FindSample(nbClient libovsdbclient.Client, sampleMetadata int) (*nbdb.Sampl
 
 func GetSample(nbClient libovsdbclient.Client, sample *nbdb.Sample) (*nbdb.Sample, error) {
 	found := []*nbdb.Sample{}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model:          sample,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
-	modelClient := newModelClient(nbClient)
+	modelClient := libovsdbops.NewModelClient(nbClient)
 	err := modelClient.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -147,7 +148,7 @@ func NewSamplingConfig(featureCollectors map[SampleFeature][]string) *SamplingCo
 	}
 }
 
-func addSample(c *SamplingConfig, opModels []operationModel, model model.Model) []operationModel {
+func addSample(c *SamplingConfig, opModels []libovsdbops.OperationModel, model model.Model) []libovsdbops.OperationModel {
 	switch t := model.(type) {
 	case *nbdb.ACL:
 		return createOrUpdateSampleForACL(opModels, c, t)
@@ -155,8 +156,8 @@ func addSample(c *SamplingConfig, opModels []operationModel, model model.Model) 
 	return opModels
 }
 
-// createOrUpdateSampleForACL should be called before acl operationModel is appended to opModels.
-func createOrUpdateSampleForACL(opModels []operationModel, c *SamplingConfig, acl *nbdb.ACL) []operationModel {
+// createOrUpdateSampleForACL should be called before acl libovsdbops.OperationModel is appended to opModels.
+func createOrUpdateSampleForACL(opModels []libovsdbops.OperationModel, c *SamplingConfig, acl *nbdb.ACL) []libovsdbops.OperationModel {
 	if c == nil {
 		acl.SampleEst = nil
 		acl.SampleNew = nil
@@ -174,7 +175,7 @@ func createOrUpdateSampleForACL(opModels []operationModel, c *SamplingConfig, ac
 		// 32 bits
 		Metadata: int(aclID),
 	}
-	opModel := operationModel{
+	opModel := libovsdbops.OperationModel{
 		Model: sample,
 		DoAfter: func() {
 			acl.SampleEst = &sample.UUID
@@ -198,23 +199,23 @@ func GetACLSampleID(acl *nbdb.ACL) uint32 {
 	// In reality, connection A is still allowed, as existing connections are not affected by ANP updates.
 	// To avoid this, we encode Match and Action to the sampleID, to ensure a new sampleID is assigned on Match or action change.
 	// In that case stale sampleIDs will just report messages like "sampling for this connection was updated or deleted".
-	primaryID := acl.ExternalIDs[PrimaryIDKey.String()] + acl.Match + acl.Action
+	primaryID := acl.ExternalIDs[libovsdbops.PrimaryIDKey.String()] + acl.Match + acl.Action
 	h := fnv.New32a()
 	h.Write([]byte(primaryID))
 	return h.Sum32()
 }
 
 func getACLSampleFeature(acl *nbdb.ACL) SampleFeature {
-	switch acl.ExternalIDs[OwnerTypeKey.String()] {
-	case AdminNetworkPolicyOwnerType, BaselineAdminNetworkPolicyOwnerType:
+	switch acl.ExternalIDs[libovsdbops.OwnerTypeKey.String()] {
+	case libovsdbops.AdminNetworkPolicyOwnerType, libovsdbops.BaselineAdminNetworkPolicyOwnerType:
 		return AdminNetworkPolicySample
-	case MulticastNamespaceOwnerType, MulticastClusterOwnerType:
+	case libovsdbops.MulticastNamespaceOwnerType, libovsdbops.MulticastClusterOwnerType:
 		return MulticastSample
-	case NetpolNodeOwnerType, NetworkPolicyOwnerType, NetpolNamespaceOwnerType:
+	case libovsdbops.NetpolNodeOwnerType, libovsdbops.NetworkPolicyOwnerType, libovsdbops.NetpolNamespaceOwnerType:
 		return NetworkPolicySample
-	case EgressFirewallOwnerType:
+	case libovsdbops.EgressFirewallOwnerType:
 		return EgressFirewallSample
-	case UDNIsolationOwnerType:
+	case libovsdbops.UDNIsolationOwnerType:
 		return UDNIsolationSample
 	}
 	return ""

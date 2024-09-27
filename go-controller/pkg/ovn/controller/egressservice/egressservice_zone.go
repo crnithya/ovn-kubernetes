@@ -14,7 +14,8 @@ import (
 	egressserviceinformer "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressservice/v1/apis/informers/externalversions/egressservice/v1"
 	egressservicelisters "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressservice/v1/apis/listers/egressservice/v1"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -462,7 +463,7 @@ func (c *Controller) repair() error {
 
 	errorList := []error{}
 	ops := []libovsdb.Operation{}
-	ops, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, ops, c.GetNetworkScopedClusterRouterName(), lrpPredicate)
+	ops, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, ops, c.GetNetworkScopedClusterRouterName(), lrpPredicate)
 	if err != nil {
 		errorList = append(errorList,
 			fmt.Errorf("failed to create ops for deleting stale logical router policies from router %s: %v", c.GetNetworkScopedClusterRouterName(), err))
@@ -533,7 +534,7 @@ func (c *Controller) repair() error {
 			svcKeyToRemoteConfiguredV6Endpoints[svcKey] = append(svcKeyToLocalConfiguredV6Endpoints[svcKey], logicalIP)
 			return false
 		}
-		ops, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, ops, c.GetNetworkScopedClusterRouterName(), lrpICPredicate)
+		ops, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, ops, c.GetNetworkScopedClusterRouterName(), lrpICPredicate)
 		if err != nil {
 			errorList = append(errorList,
 				fmt.Errorf("failed to create ops for deleting stale logical router policies from router %s: %v", c.GetNetworkScopedClusterRouterName(), err))
@@ -887,7 +888,7 @@ func (c *Controller) clearServiceResourcesAndRequeue(key string, svcState *svcSt
 	}
 
 	deleteOps := []libovsdb.Operation{}
-	deleteOps, err := libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, deleteOps, c.GetNetworkScopedClusterRouterName(), p)
+	deleteOps, err := ovnops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, deleteOps, c.GetNetworkScopedClusterRouterName(), p)
 	if err != nil {
 		return err
 	}

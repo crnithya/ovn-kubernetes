@@ -122,7 +122,7 @@ func TestAdd(t *testing.T) {
 					Port:    "1234"}, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{nil, fmt.Errorf("mock error")}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{nil, fmt.Errorf("mock error")}, 0, 1},
 			},
 		},
 		{
@@ -143,7 +143,7 @@ func TestAdd(t *testing.T) {
 				{"Exchange", []string{"*dns.Client", "*dns.Msg", "string"}, []interface{}{}, []interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, test1IPv4, "300")}}, 500 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -172,7 +172,7 @@ func TestAdd(t *testing.T) {
 					[]interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, clusterSubnetIP, "300")}}, 500 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -201,7 +201,7 @@ func TestAdd(t *testing.T) {
 					[]interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, test1IPv4, "300"), generateRR(test1DNSName, clusterSubnetIP, "300")}}, 500 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -232,7 +232,7 @@ func TestAdd(t *testing.T) {
 				{"Exchange", []string{"*dns.Client", "*dns.Msg", "string"}, []interface{}{}, []interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, test1IPv6, "300")}}, 500 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -266,7 +266,7 @@ func TestAdd(t *testing.T) {
 				{"Exchange", []string{"*dns.Client", "*dns.Msg", "string"}, []interface{}{}, []interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, test1IPv4Update, "300")}}, 1 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -415,7 +415,7 @@ func TestDelete(t *testing.T) {
 				{"Exchange", []string{"*dns.Client", "*dns.Msg", "string"}, []interface{}{}, []interface{}{&dns.Msg{Answer: []dns.RR{generateRR(test1DNSName, test1IPv6, "300")}}, 500 * time.Second, nil}, 0, 1},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{"NewAddressSet", []string{"*ops.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
+				{"NewAddressSet", []string{"*ovsdb.DbObjectIDs", "[]string"}, []interface{}{}, []interface{}{mockAddressSetOps, nil}, 0, 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{"SetAddresses", []string{"[]string"}, []interface{}{}, []interface{}{nil}, 0, 1},

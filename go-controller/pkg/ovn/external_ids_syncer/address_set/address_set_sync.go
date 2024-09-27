@@ -7,7 +7,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util/batching"
@@ -171,7 +172,7 @@ func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName 
 	aclPred := func(acl *nbdb.ACL) bool {
 		return strings.Contains(acl.Match, "$"+oldHash)
 	}
-	acls, err = libovsdbops.FindACLsWithPredicate(syncer.nbClient, aclPred)
+	acls, err = ovnops.FindACLsWithPredicate(syncer.nbClient, aclPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find acls for address set %s: %v", oldHash, err)
 		return
@@ -179,7 +180,7 @@ func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName 
 	qosPred := func(qos *nbdb.QoS) bool {
 		return strings.Contains(qos.Match, "$"+oldHash)
 	}
-	qoses, err = libovsdbops.FindQoSesWithPredicate(syncer.nbClient, qosPred)
+	qoses, err = ovnops.FindQoSesWithPredicate(syncer.nbClient, qosPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find qoses for address set %s: %v", oldHash, err)
 		return
@@ -187,7 +188,7 @@ func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName 
 	lrpPred := func(lrp *nbdb.LogicalRouterPolicy) bool {
 		return strings.Contains(lrp.Match, "$"+oldHash)
 	}
-	lrps, err = libovsdbops.FindLogicalRouterPoliciesWithPredicate(syncer.nbClient, lrpPred)
+	lrps, err = ovnops.FindLogicalRouterPoliciesWithPredicate(syncer.nbClient, lrpPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find lrps for address set %s: %v", oldHash, err)
 		return
@@ -258,7 +259,7 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 			// new address set wasn't built
 			if len(addrSetInfo.acls) == 0 && len(addrSetInfo.qoses) == 0 && len(addrSetInfo.lrps) == 0 {
 				// address set is stale and not referenced, clean up
-				ops, err = libovsdbops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
+				ops, err = ovnops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
 			} else {
 				syncer.ignoredAddressSets += 1
 			}
@@ -267,12 +268,12 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 
 		oldName := addrSetInfo.oldAddrSet.ExternalIDs["name"]
 		// create updated address set
-		ops, err = libovsdbops.CreateOrUpdateAddressSetsOps(syncer.nbClient, ops, addrSetInfo.newAddrSet)
+		ops, err = ovnops.CreateOrUpdateAddressSetsOps(syncer.nbClient, ops, addrSetInfo.newAddrSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update address set ops for address set %s: %v", oldName, err)
 		}
 		// delete old address set
-		ops, err = libovsdbops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
+		ops, err = ovnops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update address set ops for address set %s: %v", oldName, err)
 		}
@@ -302,19 +303,19 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 	}
 
 	for _, acl := range aclsToUpdate {
-		ops, err = libovsdbops.UpdateACLsOps(syncer.nbClient, ops, acl)
+		ops, err = ovnops.UpdateACLsOps(syncer.nbClient, ops, acl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update acl ops: %v", err)
 		}
 	}
 	for _, qos := range qosesToUpdate {
-		ops, err = libovsdbops.UpdateQoSesOps(syncer.nbClient, ops, qos)
+		ops, err = ovnops.UpdateQoSesOps(syncer.nbClient, ops, qos)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update qos ops: %v", err)
 		}
 	}
 	for _, lrp := range lrpsToUpdate {
-		ops, err = libovsdbops.UpdateLogicalRouterPoliciesOps(syncer.nbClient, ops, lrp)
+		ops, err = ovnops.UpdateLogicalRouterPoliciesOps(syncer.nbClient, ops, lrp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update LRPs ops: %v", err)
 		}
@@ -366,7 +367,7 @@ func (syncer *AddressSetsSyncer) getAddrSetUpdateInfo(as *nbdb.AddressSet) (*upd
 func (syncer *AddressSetsSyncer) SyncAddressSets() error {
 	// stale address sets don't have controller ID
 	p := libovsdbops.GetNoOwnerPredicate[*nbdb.AddressSet]()
-	addrSetList, err := libovsdbops.FindAddressSetsWithPredicate(syncer.nbClient, p)
+	addrSetList, err := ovnops.FindAddressSetsWithPredicate(syncer.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("failed to find stale address sets: %v", err)
 	}

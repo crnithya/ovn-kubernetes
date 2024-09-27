@@ -7,7 +7,8 @@ import (
 
 	"github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics/mocks"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -40,7 +41,7 @@ func getKubeClient(nodeCount int) *kube.Kube {
 
 func setHvCfg(nbClient client.Client, hvCfg int, hvCfgTimestamp time.Time) {
 	nbGlobal := nbdb.NBGlobal{}
-	nbGlobalResp, err := libovsdbops.GetNBGlobal(nbClient, &nbGlobal)
+	nbGlobalResp, err := ovnops.GetNBGlobal(nbClient, &nbGlobal)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	nbGlobalResp.HvCfg = hvCfg
 	nbGlobalResp.HvCfgTimestamp = int(hvCfgTimestamp.UnixMilli())

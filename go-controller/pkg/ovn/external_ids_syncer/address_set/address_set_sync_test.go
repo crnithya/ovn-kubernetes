@@ -7,7 +7,8 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -393,7 +394,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 				addressSetFactoryIPID: ipv4AddressSetFactoryID,
 			},
 		}
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			"aclName",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,
@@ -434,7 +435,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 				addressSetFactoryIPID: ipv4AddressSetFactoryID,
 			},
 		}
-		acl1 := libovsdbops.BuildACL(
+		acl1 := ovnops.BuildACL(
 			"acl1",
 			nbdb.ACLDirectionFromLport,
 			types.EgressFirewallStartPriority,
@@ -450,7 +451,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 			types.PrimaryACLTier,
 		)
 		acl1.UUID = "acl1-UUID"
-		acl2 := libovsdbops.BuildACL(
+		acl2 := ovnops.BuildACL(
 			"acl2",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,
@@ -487,7 +488,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 		}
 		// namespace-owned address set may be referenced from different objects,
 		// test lrp, acl and qos
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			"aclName",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,

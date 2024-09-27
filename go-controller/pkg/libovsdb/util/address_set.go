@@ -6,7 +6,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -19,13 +20,13 @@ func DeleteAddrSetsWithoutACLRef(predicateIDs *libovsdbops.DbObjectIDs, nbClient
 		addrSetReferenced[item.Name] = false
 		return false
 	})
-	_, err := libovsdbops.FindAddressSetsWithPredicate(nbClient, predicate)
+	_, err := ovnops.FindAddressSetsWithPredicate(nbClient, predicate)
 	if err != nil {
 		return fmt.Errorf("failed to find address sets with predicate: %w", err)
 	}
 
 	// Set addrSetReferenced[addrSetName] = true if referencing acl exists.
-	_, err = libovsdbops.FindACLsWithPredicate(nbClient, func(item *nbdb.ACL) bool {
+	_, err = ovnops.FindACLsWithPredicate(nbClient, func(item *nbdb.ACL) bool {
 		for addrSetName := range addrSetReferenced {
 			if strings.Contains(item.Match, addrSetName) {
 				addrSetReferenced[addrSetName] = true
@@ -43,7 +44,7 @@ func DeleteAddrSetsWithoutACLRef(predicateIDs *libovsdbops.DbObjectIDs, nbClient
 	for addrSetName, isReferenced := range addrSetReferenced {
 		if !isReferenced {
 			// No references for stale address set, delete.
-			ops, err = libovsdbops.DeleteAddressSetsOps(nbClient, ops, &nbdb.AddressSet{
+			ops, err = ovnops.DeleteAddressSetsOps(nbClient, ops, &nbdb.AddressSet{
 				Name: addrSetName,
 			})
 			if err != nil {

@@ -7,7 +7,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -156,7 +157,7 @@ func (syncer *PortGroupSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName, n
 	for _, aclUUID := range referencingACLUUIDs {
 		refACLs = append(refACLs, &nbdb.ACL{UUID: aclUUID})
 	}
-	acls, err = libovsdbops.FindACLs(syncer.nbClient, refACLs)
+	acls, err = ovnops.FindACLs(syncer.nbClient, refACLs)
 	if err != nil {
 		err = fmt.Errorf("failed to find acls for port group %s: %v", oldHash, err)
 		return
@@ -213,12 +214,12 @@ func (syncer *PortGroupSyncer) getUpdatePortGroupOps(portGroupInfos []*updatePor
 	for _, portGroupInfo := range portGroupInfos {
 		oldName := portGroupInfo.oldPG.ExternalIDs["name"]
 		// create updated port group
-		ops, err = libovsdbops.CreateOrUpdatePortGroupsOps(syncer.nbClient, ops, portGroupInfo.newPG)
+		ops, err = ovnops.CreateOrUpdatePortGroupsOps(syncer.nbClient, ops, portGroupInfo.newPG)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update port group ops for port group %s: %v", oldName, err)
 		}
 		// delete old port group
-		ops, err = libovsdbops.DeletePortGroupsOps(syncer.nbClient, ops, portGroupInfo.oldPG.Name)
+		ops, err = ovnops.DeletePortGroupsOps(syncer.nbClient, ops, portGroupInfo.oldPG.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update port group ops for port group %s: %v", oldName, err)
 		}
@@ -234,7 +235,7 @@ func (syncer *PortGroupSyncer) getUpdatePortGroupOps(portGroupInfos []*updatePor
 	}
 
 	for _, acl := range aclsToUpdate {
-		ops, err = libovsdbops.UpdateACLsOps(syncer.nbClient, ops, acl)
+		ops, err = ovnops.UpdateACLsOps(syncer.nbClient, ops, acl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update acl ops: %v", err)
 		}
@@ -280,7 +281,7 @@ func getPGNamesFromMatch(match string) []string {
 
 func (syncer *PortGroupSyncer) getReferencingACLs() (map[string][]string, error) {
 	pgToACLUUIDs := map[string][]string{}
-	_, err := libovsdbops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
+	_, err := ovnops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
 		aclPGs := getPGNamesFromMatch(acl.Match)
 		for _, pgName := range aclPGs {
 			pgToACLUUIDs[pgName] = append(pgToACLUUIDs[pgName], acl.UUID)
@@ -296,7 +297,7 @@ func (syncer *PortGroupSyncer) getReferencingACLs() (map[string][]string, error)
 // SyncPortGroups must be run after ACLs sync, since it uses new ACL.ExternalIDs
 func (syncer *PortGroupSyncer) SyncPortGroups() error {
 	// stale port groups don't have controller ID
-	portGroupList, err := libovsdbops.FindPortGroupsWithPredicate(syncer.nbClient, libovsdbops.GetNoOwnerPredicate[*nbdb.PortGroup]())
+	portGroupList, err := ovnops.FindPortGroupsWithPredicate(syncer.nbClient, libovsdbops.GetNoOwnerPredicate[*nbdb.PortGroup]())
 	if err != nil {
 		return fmt.Errorf("failed to find stale port groups: %v", err)
 	}

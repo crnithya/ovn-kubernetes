@@ -16,7 +16,8 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
@@ -1172,7 +1173,7 @@ func (cr *ConfigDurationRecorder) AddOVN(nbClient libovsdbclient.Client, kind, n
 		return []ovsdb.Operation{}, func() {}, time.Time{}, nil
 	}
 	nbGlobal := &nbdb.NBGlobal{}
-	nbGlobal, err := libovsdbops.GetNBGlobal(nbClient, nbGlobal)
+	nbGlobal, err := ovnops.GetNBGlobal(nbClient, nbGlobal)
 	if err != nil {
 		return []ovsdb.Operation{}, func() {}, time.Time{}, fmt.Errorf("failed to find OVN Northbound NB_Global table"+
 			" entry: %v", err)
@@ -1435,7 +1436,7 @@ func setNbE2eTimestamp(ovnNBClient libovsdbclient.Client, timestamp int64) bool 
 	nbGlobal := nbdb.NBGlobal{
 		Options: map[string]string{globalOptionsTimestampField: fmt.Sprintf("%d", timestamp)},
 	}
-	if err := libovsdbops.UpdateNBGlobalSetOptions(ovnNBClient, &nbGlobal); err != nil {
+	if err := ovnops.UpdateNBGlobalSetOptions(ovnNBClient, &nbGlobal); err != nil {
 		klog.Errorf("Unable to update NB global options E2E timestamp metric err: %v", err)
 		return false
 	}
@@ -1449,7 +1450,7 @@ func getGlobalOptionsValue(client libovsdbclient.Client, field string) float64 {
 	sbGlobal := sbdb.SBGlobal{}
 
 	if dbName == "OVN_Northbound" {
-		if nbGlobal, err := libovsdbops.GetNBGlobal(client, &nbGlobal); err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
+		if nbGlobal, err := ovnops.GetNBGlobal(client, &nbGlobal); err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 			klog.Errorf("Failed to get NB_Global table err: %v", err)
 			return 0
 		} else {
@@ -1458,7 +1459,7 @@ func getGlobalOptionsValue(client libovsdbclient.Client, field string) float64 {
 	}
 
 	if dbName == "OVN_Southbound" {
-		if sbGlobal, err := libovsdbops.GetSBGlobal(client, &sbGlobal); err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
+		if sbGlobal, err := ovnops.GetSBGlobal(client, &sbGlobal); err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 			klog.Errorf("Failed to get SB_Global table err: %v", err)
 			return 0
 		} else {

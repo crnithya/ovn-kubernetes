@@ -28,7 +28,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
@@ -142,7 +143,7 @@ func (bnc *BaseNetworkController) deleteStaleLogicalSwitchPortsOnSwitches(switch
 			Name: switchName,
 		}
 
-		ops, err = libovsdbops.DeleteLogicalSwitchPortsWithPredicateOps(bnc.nbClient, ops, &sw, p)
+		ops, err = ovnops.DeleteLogicalSwitchPortsWithPredicateOps(bnc.nbClient, ops, &sw, p)
 		if err != nil {
 			return fmt.Errorf("could not generate ops to delete stale ports from logical switch %s (%+v)", switchName, err)
 		}
@@ -159,7 +160,7 @@ func (bnc *BaseNetworkController) deleteStaleLogicalSwitchPortsOnSwitches(switch
 // that owns such port (aka nodeName), based on the logical port name.
 func (bnc *BaseNetworkController) lookupPortUUIDAndSwitchName(logicalPort string) (portUUID string, logicalSwitch string, err error) {
 	lsp := &nbdb.LogicalSwitchPort{Name: logicalPort}
-	lsp, err = libovsdbops.GetLogicalSwitchPort(bnc.nbClient, lsp)
+	lsp, err = ovnops.GetLogicalSwitchPort(bnc.nbClient, lsp)
 	if err != nil {
 		return "", "", err
 	}
@@ -171,7 +172,7 @@ func (bnc *BaseNetworkController) lookupPortUUIDAndSwitchName(logicalPort string
 		}
 		return false
 	}
-	nodeSwitches, err := libovsdbops.FindLogicalSwitchesWithPredicate(bnc.nbClient, p)
+	nodeSwitches, err := ovnops.FindLogicalSwitchesWithPredicate(bnc.nbClient, p)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get node logical switch for logical port %s (%s): %w", logicalPort, lsp.UUID, err)
 	}
@@ -484,7 +485,7 @@ func (bnc *BaseNetworkController) addLogicalPortToNetwork(pod *kapi.Pod, nadName
 	// UUID and and the port cache, address sets, and port groups
 	// will still have the old UUID.
 	lsp = &nbdb.LogicalSwitchPort{Name: portName}
-	existingLSP, err := libovsdbops.GetLogicalSwitchPort(bnc.nbClient, lsp)
+	existingLSP, err := ovnops.GetLogicalSwitchPort(bnc.nbClient, lsp)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		return nil, nil, nil, false, fmt.Errorf("unable to get the lsp %s from the nbdb: %s", portName, err)
 	}
@@ -493,7 +494,7 @@ func (bnc *BaseNetworkController) addLogicalPortToNetwork(pod *kapi.Pod, nadName
 	// Sanity check. If port exists, it should be in the logical switch obtained from the pod spec.
 	if lspExist {
 		portFound := false
-		ls, err = libovsdbops.GetLogicalSwitch(bnc.nbClient, ls)
+		ls, err = ovnops.GetLogicalSwitch(bnc.nbClient, ls)
 		if err != nil {
 			return nil, nil, nil, false, fmt.Errorf("[%s] unable to find logical switch %s in NBDB",
 				podDesc, switchName)
@@ -588,7 +589,7 @@ func (bnc *BaseNetworkController) addLogicalPortToNetwork(pod *kapi.Pod, nadName
 		}
 	}
 
-	ops, err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitchOps(bnc.nbClient, nil, ls, lsp)
+	ops, err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitchOps(bnc.nbClient, nil, ls, lsp)
 	if err != nil {
 		return nil, nil, nil, false,
 			fmt.Errorf("error creating logical switch port %+v on switch %+v: %+v", *lsp, *ls, err)
@@ -673,7 +674,7 @@ func (bnc *BaseNetworkController) delLSPOps(logicalPort, switchName,
 		UUID: lspUUID,
 		Name: logicalPort,
 	}
-	ops, err := libovsdbops.DeleteLogicalSwitchPortsOps(bnc.nbClient, nil, &lsw, &lsp)
+	ops, err := ovnops.DeleteLogicalSwitchPortsOps(bnc.nbClient, nil, &lsw, &lsp)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting logical switch port %+v from switch %+v: %w", lsp, lsw, err)
 	}
@@ -697,7 +698,7 @@ func (bnc *BaseNetworkController) deletePodFromNamespace(ns string, podIfAddrs [
 	}
 
 	if nsInfo.portGroupName != "" && len(portUUID) > 0 {
-		if ops, err = libovsdbops.DeletePortsFromPortGroupOps(bnc.nbClient, ops, nsInfo.portGroupName, portUUID); err != nil {
+		if ops, err = ovnops.DeletePortsFromPortGroupOps(bnc.nbClient, ops, nsInfo.portGroupName, portUUID); err != nil {
 			return nil, err
 		}
 	}

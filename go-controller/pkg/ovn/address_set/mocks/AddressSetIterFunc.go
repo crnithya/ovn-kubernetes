@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	mock "github.com/stretchr/testify/mock"
 )
 
