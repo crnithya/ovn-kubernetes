@@ -10,7 +10,8 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -182,7 +183,7 @@ func TestUDNEnabledServices(t *testing.T) {
 }
 
 func getAllAddressesFromAddressSets(nbClient client.Client, asNames ...string) (sets.Set[string], error) {
-	addressSets, err := libovsdbops.FindAddressSetsWithPredicate(nbClient, func(set *nbdb.AddressSet) bool {
+	addressSets, err := ovnops.FindAddressSetsWithPredicate(nbClient, func(set *nbdb.AddressSet) bool {
 		for _, asName := range asNames {
 			if asName == set.Name {
 				return true
@@ -250,7 +251,7 @@ func getAddressSets(addresses []string) (*nbdb.AddressSet, *nbdb.AddressSet, err
 	}
 
 	v4DBIDs := GetAddressSetDBIDs()
-	v4DBIDs = v4DBIDs.AddIDs(map[libovsdbops.ExternalIDKey]string{libovsdbops.IPFamilyKey: "v4"})
+	v4DBIDs = v4DBIDs.AddIDs(map[ovsdbops.ExternalIDKey]string{ovsdbops.IPFamilyKey: "v4"})
 
 	v4AS := &nbdb.AddressSet{
 		UUID:        v4DBIDs.String(),
@@ -260,7 +261,7 @@ func getAddressSets(addresses []string) (*nbdb.AddressSet, *nbdb.AddressSet, err
 	}
 
 	v6DBIDs := GetAddressSetDBIDs()
-	v6DBIDs = v6DBIDs.AddIDs(map[libovsdbops.ExternalIDKey]string{libovsdbops.IPFamilyKey: "v6"})
+	v6DBIDs = v6DBIDs.AddIDs(map[ovsdbops.ExternalIDKey]string{ovsdbops.IPFamilyKey: "v6"})
 
 	v6AS := &nbdb.AddressSet{
 		UUID:        v6DBIDs.String(),

@@ -5,7 +5,8 @@ import (
 
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/controller/services"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -23,10 +24,10 @@ import (
 
 const EgressServiceServedPodsAddrSetName = "egresssvc-served-pods"
 
-func GetEgressServiceAddrSetDbIDs(controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressService, controller, map[libovsdbops.ExternalIDKey]string{
+func GetEgressServiceAddrSetDbIDs(controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressService, controller, map[ovsdbops.ExternalIDKey]string{
 		// egressService has 1 cluster-wide address set
-		libovsdbops.ObjectNameKey: EgressServiceServedPodsAddrSetName,
+		ovsdbops.ObjectNameKey: EgressServiceServedPodsAddrSetName,
 	})
 }
 
@@ -250,7 +251,7 @@ func (c *Controller) createOrUpdateLogicalRouterPoliciesOps(key, v4MgmtIP, v6Mgm
 			return item.Match == lrp.Match && item.Priority == lrp.Priority && item.ExternalIDs[svcExternalIDKey] == key
 		}
 
-		allOps, err = libovsdbops.CreateOrUpdateLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), lrp, p)
+		allOps, err = ovnops.CreateOrUpdateLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), lrp, p)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +271,7 @@ func (c *Controller) createOrUpdateLogicalRouterPoliciesOps(key, v4MgmtIP, v6Mgm
 			return item.Match == lrp.Match && item.Priority == lrp.Priority && item.ExternalIDs[svcExternalIDKey] == key
 		}
 
-		allOps, err = libovsdbops.CreateOrUpdateLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), lrp, p)
+		allOps, err = ovnops.CreateOrUpdateLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), lrp, p)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +292,7 @@ func (c *Controller) deleteLogicalRouterPoliciesOps(key string, v4Endpoints, v6E
 			return item.Match == match && item.Priority == ovntypes.EgressSVCReroutePriority && item.ExternalIDs[svcExternalIDKey] == key
 		}
 
-		allOps, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), p)
+		allOps, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), p)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +304,7 @@ func (c *Controller) deleteLogicalRouterPoliciesOps(key string, v4Endpoints, v6E
 			return item.Match == match && item.Priority == ovntypes.EgressSVCReroutePriority && item.ExternalIDs[svcExternalIDKey] == key
 		}
 
-		allOps, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), p)
+		allOps, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(c.nbClient, allOps, c.GetNetworkScopedClusterRouterName(), p)
 		if err != nil {
 			return nil, err
 		}

@@ -6,7 +6,7 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -60,7 +60,7 @@ func (gtf *GatewayTopologyFactory) newClusterRouter(
 		logicalRouter.ExternalIDs[types.TopologyExternalID] = netInfo.TopologyType()
 	}
 
-	if err := libovsdbops.CreateOrUpdateLogicalRouter(
+	if err := ovnops.CreateOrUpdateLogicalRouter(
 		gtf.nbClient,
 		&logicalRouter,
 		&logicalRouter.Options,
@@ -92,7 +92,7 @@ func (gtf *GatewayTopologyFactory) NewJoinSwitch(
 	}
 
 	// nothing is updated here, so no reason to pass fields
-	err := libovsdbops.CreateOrUpdateLogicalSwitch(gtf.nbClient, &logicalSwitch)
+	err := ovnops.CreateOrUpdateLogicalSwitch(gtf.nbClient, &logicalSwitch)
 	if err != nil {
 		return fmt.Errorf("failed to create logical switch %+v: %v", logicalSwitch, err)
 	}
@@ -118,7 +118,7 @@ func (gtf *GatewayTopologyFactory) NewJoinSwitch(
 		}
 	}
 
-	err = libovsdbops.CreateOrUpdateLogicalRouterPort(gtf.nbClient, clusterRouter,
+	err = ovnops.CreateOrUpdateLogicalRouterPort(gtf.nbClient, clusterRouter,
 		&logicalRouterPort, nil, &logicalRouterPort.MAC, &logicalRouterPort.Networks)
 	if err != nil {
 		return fmt.Errorf("failed to add logical router port %+v on router %s: %v", logicalRouterPort, clusterRouter.Name, err)
@@ -135,7 +135,7 @@ func (gtf *GatewayTopologyFactory) NewJoinSwitch(
 		Addresses: []string{"router"},
 	}
 	sw := nbdb.LogicalSwitch{Name: joinSwitchName}
-	err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitch(gtf.nbClient, &sw, &logicalSwitchPort)
+	err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitch(gtf.nbClient, &sw, &logicalSwitchPort)
 	if err != nil {
 		return fmt.Errorf("failed to create logical switch port %+v and switch %s: %v", logicalSwitchPort, joinSwitchName, err)
 	}

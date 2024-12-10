@@ -19,7 +19,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/generator/udn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/persistentips"
@@ -391,7 +392,7 @@ func (bsnc *BaseSecondaryNetworkController) addLogicalPortToNetworkForNAD(pod *c
 	ops = append(ops, recordOps...)
 
 	transactStart := time.Now()
-	_, err = libovsdbops.TransactAndCheckAndSetUUIDs(bsnc.nbClient, lsp, ops)
+	_, err = ovsdbops.TransactAndCheckAndSetUUIDs(bsnc.nbClient, lsp, ops)
 	libovsdbExecuteTime = time.Since(transactStart)
 	if err != nil {
 		return fmt.Errorf("error transacting operations %+v: %v", ops, err)
@@ -764,17 +765,17 @@ func (bsnc *BaseSecondaryNetworkController) WatchMultiNetworkPolicy() error {
 func cleanupPolicyLogicalEntities(nbClient libovsdbclient.Client, ops []ovsdb.Operation, controllerName string) ([]ovsdb.Operation, error) {
 	var err error
 	portGroupPredicate := func(item *nbdb.PortGroup) bool {
-		return item.ExternalIDs[libovsdbops.OwnerControllerKey.String()] == controllerName
+		return item.ExternalIDs[ovsdbops.OwnerControllerKey.String()] == controllerName
 	}
-	ops, err = libovsdbops.DeletePortGroupsWithPredicateOps(nbClient, ops, portGroupPredicate)
+	ops, err = ovnops.DeletePortGroupsWithPredicateOps(nbClient, ops, portGroupPredicate)
 	if err != nil {
 		return ops, fmt.Errorf("failed to get ops to delete port groups owned by controller %s", controllerName)
 	}
 
 	asPredicate := func(item *nbdb.AddressSet) bool {
-		return item.ExternalIDs[libovsdbops.OwnerControllerKey.String()] == controllerName
+		return item.ExternalIDs[ovsdbops.OwnerControllerKey.String()] == controllerName
 	}
-	ops, err = libovsdbops.DeleteAddressSetsWithPredicateOps(nbClient, ops, asPredicate)
+	ops, err = ovnops.DeleteAddressSetsWithPredicateOps(nbClient, ops, asPredicate)
 	if err != nil {
 		return ops, fmt.Errorf("failed to get ops to delete address sets owned by controller %s", controllerName)
 	}
@@ -856,7 +857,7 @@ func (bsnc *BaseSecondaryNetworkController) buildUDNEgressSNAT(localPodSubnets [
 		if masqIP == nil {
 			return nil, fmt.Errorf("masquerade IP cannot be empty network %s (%d): %v", bsnc.GetNetworkName(), networkID, err)
 		}
-		snats = append(snats, libovsdbops.BuildSNATWithMatch(&masqIP.ManagementPort.IP, localPodSubnet, outputPort,
+		snats = append(snats, ovnops.BuildSNATWithMatch(&masqIP.ManagementPort.IP, localPodSubnet, outputPort,
 			extIDs, getMasqueradeManagementIPSNATMatch(dstMac.String())))
 	}
 	return snats, nil
@@ -904,8 +905,8 @@ func (bsnc *BaseSecondaryNetworkController) setPodLogicalSwitchPortEnabledField(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch switch name for pod %s: %w", pod.Name, err)
 	}
-	customFields := []libovsdbops.ModelUpdateField{libovsdbops.LogicalSwitchPortEnabled}
-	ops, err = libovsdbops.UpdateLogicalSwitchPortsOnSwitchWithCustomFieldsOps(bsnc.nbClient, ops, &nbdb.LogicalSwitch{Name: switchName}, customFields, lsp)
+	customFields := []ovsdbops.ModelUpdateField{ovsdbops.LogicalSwitchPortEnabled}
+	ops, err = ovnops.UpdateLogicalSwitchPortsOnSwitchWithCustomFieldsOps(bsnc.nbClient, ops, &nbdb.LogicalSwitch{Name: switchName}, customFields, lsp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed updating logical switch port %+v on switch %s: %w", *lsp, switchName, err)
 	}
@@ -935,7 +936,7 @@ func (bsnc *BaseSecondaryNetworkController) enableSourceLSPFailedLiveMigration(p
 	if err != nil {
 		return fmt.Errorf("failed to set source Pod lsp to enabled after migration failed: %w", err)
 	}
-	_, err = libovsdbops.TransactAndCheckAndSetUUIDs(bsnc.nbClient, sourcePodLsp, ops)
+	_, err = ovsdbops.TransactAndCheckAndSetUUIDs(bsnc.nbClient, sourcePodLsp, ops)
 	if err != nil {
 		return fmt.Errorf("failed transacting operations %+v: %w", ops, err)
 	}

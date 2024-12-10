@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -24,19 +25,19 @@ func FindPortGroupsWithPredicate(nbClient libovsdbclient.Client, p portGroupPred
 // CreateOrUpdatePortGroupsOps creates or updates the provided port groups
 // returning the corresponding ops
 func CreateOrUpdatePortGroupsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, pgs ...*nbdb.PortGroup) ([]libovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(pgs))
+	opModels := make([]ovsdbops.OperationModel, 0, len(pgs))
 	for i := range pgs {
 		pg := pgs[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          pg,
-			OnModelUpdates: getAllUpdatableFields(pg),
+			OnModelUpdates: ovsdbops.GetAllUpdatableFields(pg),
 			ErrNotFound:    false,
 			BulkOp:         false,
 		}
 		opModels = append(opModels, opModel)
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModels...)
 }
 
@@ -47,20 +48,20 @@ func CreateOrUpdatePortGroups(nbClient libovsdbclient.Client, pgs ...*nbdb.PortG
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
 // CreatePortGroup creates the provided port group if it doesn't exist
 func CreatePortGroup(nbClient libovsdbclient.Client, portGroup *nbdb.PortGroup) error {
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          portGroup,
-		OnModelUpdates: onModelUpdatesNone(),
+		OnModelUpdates: ovsdbops.OnModelUpdatesNone(),
 		ErrNotFound:    false,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	_, err := m.CreateOrUpdate(opModel)
 	return err
 }
@@ -68,14 +69,14 @@ func CreatePortGroup(nbClient libovsdbclient.Client, portGroup *nbdb.PortGroup) 
 // GetPortGroup looks up a port group from the cache
 func GetPortGroup(nbClient libovsdbclient.Client, pg *nbdb.PortGroup) (*nbdb.PortGroup, error) {
 	found := []*nbdb.PortGroup{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          pg,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -94,14 +95,14 @@ func AddPortsToPortGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.Opera
 		Ports: ports,
 	}
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            &pg,
 		OnModelMutations: []interface{}{&pg.Ports},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModel)
 }
 
@@ -112,7 +113,7 @@ func AddPortsToPortGroup(nbClient libovsdbclient.Client, name string, ports ...s
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -128,14 +129,14 @@ func DeletePortsFromPortGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.
 		Ports: ports,
 	}
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            &pg,
 		OnModelMutations: []interface{}{&pg.Ports},
 		ErrNotFound:      false,
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
@@ -147,7 +148,7 @@ func DeletePortsFromPortGroup(nbClient libovsdbclient.Client, name string, ports
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -167,14 +168,14 @@ func AddACLsToPortGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.Operat
 		pg.ACLs = append(pg.ACLs, acl.UUID)
 	}
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            &pg,
 		OnModelMutations: []interface{}{&pg.ACLs},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModel)
 }
 
@@ -189,14 +190,14 @@ func UpdatePortGroupSetACLsOps(nbClient libovsdbclient.Client, ops []libovsdb.Op
 	for _, acl := range acls {
 		pg.ACLs = append(pg.ACLs, acl.UUID)
 	}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          &pg,
 		OnModelUpdates: []interface{}{&pg.ACLs},
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModel)
 }
 
@@ -216,14 +217,14 @@ func DeleteACLsFromPortGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.O
 		pg.ACLs = append(pg.ACLs, acl.UUID)
 	}
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            &pg,
 		OnModelMutations: []interface{}{&pg.ACLs},
 		ErrNotFound:      false,
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
@@ -236,7 +237,7 @@ func DeleteACLsFromPortGroups(nbClient libovsdbclient.Client, names []string, ac
 			return err
 		}
 	}
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -253,7 +254,7 @@ func DeleteACLsFromAllPortGroups(nbClient libovsdbclient.Client, acls ...*nbdb.A
 		pg.ACLs = append(pg.ACLs, acl.UUID)
 	}
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            &pg,
 		ModelPredicate:   func(item *nbdb.PortGroup) bool { return true },
 		OnModelMutations: []interface{}{&pg.ACLs},
@@ -261,24 +262,24 @@ func DeleteACLsFromAllPortGroups(nbClient libovsdbclient.Client, acls ...*nbdb.A
 		BulkOp:           true,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	ops, err := m.DeleteOps(nil, opModel)
 	if err != nil {
 		return err
 	}
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
 // DeletePortGroupsOps deletes the provided port groups and returns the
 // corresponding ops
 func DeletePortGroupsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, names ...string) ([]libovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(names))
+	opModels := make([]ovsdbops.OperationModel, 0, len(names))
 	for _, name := range names {
 		pg := nbdb.PortGroup{
 			Name: name,
 		}
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:       &pg,
 			ErrNotFound: false,
 			BulkOp:      false,
@@ -286,7 +287,7 @@ func DeletePortGroupsOps(nbClient libovsdbclient.Client, ops []libovsdb.Operatio
 		opModels = append(opModels, opModel)
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModels...)
 }
 
@@ -298,7 +299,7 @@ func DeletePortGroups(nbClient libovsdbclient.Client, names ...string) error {
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
@@ -306,14 +307,14 @@ func DeletePortGroups(nbClient libovsdbclient.Client, names ...string) error {
 // a given predicate
 func DeletePortGroupsWithPredicateOps(nbClient libovsdbclient.Client, ops []libovsdb.Operation, p portGroupPredicate) ([]libovsdb.Operation, error) {
 	deleted := []*nbdb.PortGroup{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		ModelPredicate: p,
 		ExistingResult: &deleted,
 		ErrNotFound:    false,
 		BulkOp:         true,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.DeleteOps(ops, opModel)
 }
 
@@ -324,6 +325,6 @@ func DeletePortGroupsWithPredicate(nbClient libovsdbclient.Client, p portGroupPr
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }

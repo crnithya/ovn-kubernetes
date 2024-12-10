@@ -1,21 +1,22 @@
-package ops
+package ovn
 
 import (
 	"fmt"
 	"testing"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 )
 
 func TestFindNATsUsingPredicate(t *testing.T) {
 	fakeNAT1 := &nbdb.NAT{
-		UUID: buildNamedUUID(),
+		UUID: ovsdbops.BuildNamedUUID(),
 		Type: nbdb.NATTypeSNAT,
 	}
 
 	fakeNAT2 := &nbdb.NAT{
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"name": "fakeNAT2"},
 	}
 
@@ -94,26 +95,26 @@ func TestFindNATsUsingPredicate(t *testing.T) {
 
 func TestDeleteNATsFromRouter(t *testing.T) {
 	fakeNAT1 := &nbdb.NAT{
-		UUID:       buildNamedUUID(),
+		UUID:       ovsdbops.BuildNamedUUID(),
 		ExternalIP: "192.168.1.110",
 		Type:       nbdb.NATTypeSNAT,
 	}
 
 	fakeNAT2 := &nbdb.NAT{
-		UUID:       buildNamedUUID(),
+		UUID:       ovsdbops.BuildNamedUUID(),
 		ExternalIP: "192.168.1.110",
 		Type:       nbdb.NATTypeDNATAndSNAT,
 	}
 
 	fakeNAT3 := &nbdb.NAT{
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIP:  "192.168.1.111",
 		Type:        nbdb.NATTypeSNAT,
 		ExternalIDs: map[string]string{"name": "fakeNAT3"},
 	}
 
 	fakeNAT4 := &nbdb.NAT{
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIP:  "192.168.1.112",
 		Type:        nbdb.NATTypeSNAT,
 		ExternalIDs: map[string]string{"name": "fakeNAT4"},
@@ -121,13 +122,13 @@ func TestDeleteNATsFromRouter(t *testing.T) {
 
 	fakeRouter1 := &nbdb.LogicalRouter{
 		Name: "rtr1",
-		UUID: buildNamedUUID(),
+		UUID: ovsdbops.BuildNamedUUID(),
 		Nat:  []string{fakeNAT1.UUID},
 	}
 
 	fakeRouter2 := &nbdb.LogicalRouter{
 		Name: "rtr2",
-		UUID: buildNamedUUID(),
+		UUID: ovsdbops.BuildNamedUUID(),
 		Nat:  []string{fakeNAT2.UUID, fakeNAT3.UUID},
 	}
 
@@ -235,19 +236,19 @@ func TestDeleteNATsFromRouter(t *testing.T) {
 func TestDeleteRoutersWithPredicateOps(t *testing.T) {
 	fakeRouter1 := nbdb.LogicalRouter{
 		Name:        "rtr1",
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "a"},
 	}
 
 	fakeRouter2 := nbdb.LogicalRouter{
 		Name:        "rtr2",
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "a"},
 	}
 
 	fakeRouter3 := nbdb.LogicalRouter{
 		Name:        "rtr3",
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		ExternalIDs: map[string]string{"key": "b"},
 	}
 
@@ -289,7 +290,7 @@ func TestDeleteRoutersWithPredicateOps(t *testing.T) {
 				t.Fatal(fmt.Errorf("DeleteLogicalRoutersWithPredicateOps() error = %v", err))
 			}
 
-			_, err = TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			if err != nil && !tt.expectErr {
 				t.Fatal(fmt.Errorf("TransactAndCheck() error = %v", err))
 			}

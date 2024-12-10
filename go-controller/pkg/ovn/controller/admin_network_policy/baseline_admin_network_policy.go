@@ -5,7 +5,8 @@ import (
 	"sync"
 	"time"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -96,13 +97,13 @@ func (c *Controller) clearBaselineAdminNetworkPolicy(banpName string) error {
 	// remove PG for Subject (ACLs will get cleaned up automatically)
 	portGroupName := c.getANPPortGroupName(banp.name, true)
 	// no need to batch this with address-set deletes since this itself will contain a bunch of ACLs that need to be deleted which is heavy enough.
-	err := libovsdbops.DeletePortGroups(c.nbClient, portGroupName)
+	err := ovnops.DeletePortGroups(c.nbClient, portGroupName)
 	if err != nil {
 		return fmt.Errorf("unable to delete PG %s for BANP %s: %w", portGroupName, banp.name, err)
 	}
 	// remove address-sets that were created for the peers of each rule fpr the whole ANP
 	// do this after ACLs are gone so that there is no lingering references
-	err = c.clearASForPeers(banp.name, libovsdbops.AddressSetBaselineAdminNetworkPolicy)
+	err = c.clearASForPeers(banp.name, ovsdbops.AddressSetBaselineAdminNetworkPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to delete address-sets for BANP %s: %w", banp.name, err)
 	}

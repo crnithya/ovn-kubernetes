@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -26,8 +27,8 @@ func ListTemplateVar(nbClient libovsdbclient.Client) ([]*nbdb.ChassisTemplateVar
 func CreateOrUpdateChassisTemplateVarOps(nbClient libovsdbclient.Client,
 	ops []libovsdb.Operation, template *nbdb.ChassisTemplateVar) ([]libovsdb.Operation, error) {
 
-	modelClient := newModelClient(nbClient)
-	return modelClient.CreateOrUpdateOps(ops, operationModel{
+	modelClient := ovsdbops.NewModelClient(nbClient)
+	return modelClient.CreateOrUpdateOps(ops, ovsdbops.OperationModel{
 		Model:            template,
 		OnModelMutations: []interface{}{&template.Variables},
 		ErrNotFound:      false,
@@ -49,8 +50,8 @@ func deleteChassisTemplateVarVariablesOps(nbClient libovsdbclient.Client,
 	for name := range template.Variables {
 		deleteTemplate.Variables[name] = ""
 	}
-	modelClient := newModelClient(nbClient)
-	return modelClient.DeleteOps(ops, operationModel{
+	modelClient := ovsdbops.NewModelClient(nbClient)
+	return modelClient.DeleteOps(ops, ovsdbops.OperationModel{
 		Model:            deleteTemplate,
 		ModelPredicate:   predicate,
 		OnModelMutations: []interface{}{&deleteTemplate.Variables},
@@ -91,22 +92,22 @@ func DeleteAllChassisTemplateVarVariables(nbClient libovsdbclient.Client, varNam
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 
 // DeleteChassisTemplateVar deletes all complete Chassis_Template_Var
 // records matching 'templates'.
 func DeleteChassisTemplateVar(nbClient libovsdbclient.Client, templates ...*nbdb.ChassisTemplateVar) error {
-	opModels := make([]operationModel, 0, len(templates))
+	opModels := make([]ovsdbops.OperationModel, 0, len(templates))
 	for i := range templates {
 		template := templates[i]
-		opModels = append(opModels, operationModel{
+		opModels = append(opModels, ovsdbops.OperationModel{
 			Model:       template,
 			ErrNotFound: false,
 			BulkOp:      false,
 		})
 	}
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.Delete(opModels...)
 }

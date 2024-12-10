@@ -13,7 +13,7 @@ import (
 	anpapi "sigs.k8s.io/network-policy-api/apis/v1alpha1"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -25,14 +25,14 @@ var ErrorANPPriorityUnsupported = errors.New("OVNK only supports priority ranges
 var ANPWithDuplicatePriorityEvent = "ANPWithDuplicatePriority"
 var ANPWithUnsupportedPriorityEvent = "ANPWithUnsupportedPriority"
 
-func GetANPPortGroupDbIDs(anpName string, isBanp bool, controller string) *libovsdbops.DbObjectIDs {
-	idsType := libovsdbops.PortGroupAdminNetworkPolicy
+func GetANPPortGroupDbIDs(anpName string, isBanp bool, controller string) *ovsdbops.DbObjectIDs {
+	idsType := ovsdbops.PortGroupAdminNetworkPolicy
 	if isBanp {
-		idsType = libovsdbops.PortGroupBaselineAdminNetworkPolicy
+		idsType = ovsdbops.PortGroupBaselineAdminNetworkPolicy
 	}
-	return libovsdbops.NewDbObjectIDs(idsType, controller,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: anpName,
+	return ovsdbops.NewDbObjectIDs(idsType, controller,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: anpName,
 		})
 }
 
@@ -41,18 +41,18 @@ func (c *Controller) getANPPortGroupName(anpName string, isBanp bool) string {
 }
 
 // getANPRuleACLDbIDs will return the dbObjectIDs for a given rule's ACLs
-func getANPRuleACLDbIDs(name, gressPrefix, gressIndex, protocol, controller string, isBanp bool) *libovsdbops.DbObjectIDs {
-	idType := libovsdbops.ACLAdminNetworkPolicy
+func getANPRuleACLDbIDs(name, gressPrefix, gressIndex, protocol, controller string, isBanp bool) *ovsdbops.DbObjectIDs {
+	idType := ovsdbops.ACLAdminNetworkPolicy
 	if isBanp {
-		idType = libovsdbops.ACLBaselineAdminNetworkPolicy
+		idType = ovsdbops.ACLBaselineAdminNetworkPolicy
 	}
-	return libovsdbops.NewDbObjectIDs(idType, controller, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey:      name,
-		libovsdbops.PolicyDirectionKey: gressPrefix,
+	return ovsdbops.NewDbObjectIDs(idType, controller, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey:      name,
+		ovsdbops.PolicyDirectionKey: gressPrefix,
 		// gressidx is the unique id for address set within given objectName and gressPrefix
-		libovsdbops.GressIdxKey: gressIndex,
+		ovsdbops.GressIdxKey: gressIndex,
 		// protocol key
-		libovsdbops.PortPolicyProtocolKey: protocol,
+		ovsdbops.PortPolicyProtocolKey: protocol,
 	})
 }
 
@@ -87,16 +87,16 @@ func GetACLActionForBANPRule(action anpapi.BaselineAdminNetworkPolicyRuleAction)
 }
 
 // GetANPPeerAddrSetDbIDs will return the dbObjectIDs for a given rule's address-set
-func GetANPPeerAddrSetDbIDs(name, gressPrefix, gressIndex, controller string, isBanp bool) *libovsdbops.DbObjectIDs {
-	idType := libovsdbops.AddressSetAdminNetworkPolicy
+func GetANPPeerAddrSetDbIDs(name, gressPrefix, gressIndex, controller string, isBanp bool) *ovsdbops.DbObjectIDs {
+	idType := ovsdbops.AddressSetAdminNetworkPolicy
 	if isBanp {
-		idType = libovsdbops.AddressSetBaselineAdminNetworkPolicy
+		idType = ovsdbops.AddressSetBaselineAdminNetworkPolicy
 	}
-	return libovsdbops.NewDbObjectIDs(idType, controller, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey:      name,
-		libovsdbops.PolicyDirectionKey: gressPrefix,
+	return ovsdbops.NewDbObjectIDs(idType, controller, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey:      name,
+		ovsdbops.PolicyDirectionKey: gressPrefix,
 		// gressidx is the unique id for address set within given objectName and gressPrefix
-		libovsdbops.GressIdxKey: gressIndex,
+		ovsdbops.GressIdxKey: gressIndex,
 	})
 }
 
@@ -108,7 +108,7 @@ func getDirectionFromGressPrefix(gressPrefix string) string {
 }
 
 // constructMatchFromAddressSet returns the L3Match for an ACL constructed from a gressRule
-func constructMatchFromAddressSet(gressPrefix string, addrSetIndex *libovsdbops.DbObjectIDs) string {
+func constructMatchFromAddressSet(gressPrefix string, addrSetIndex *ovsdbops.DbObjectIDs) string {
 	hashedAddressSetNameIPv4, hashedAddressSetNameIPv6 := addressset.GetHashNamesForAS(addrSetIndex)
 	var match string
 	direction := getDirectionFromGressPrefix(gressPrefix)
