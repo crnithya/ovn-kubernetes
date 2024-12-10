@@ -5,7 +5,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 )
@@ -49,7 +50,7 @@ func EnsureDefaultCOPP(nbClient libovsdbclient.Client) (string, error) {
 	p := func(item *nbdb.Copp) bool {
 		return item.Name == ""
 	}
-	ops, err := libovsdbops.DeleteCOPPsWithPredicateOps(nbClient, nil, p)
+	ops, err := ovnops.DeleteCOPPsWithPredicateOps(nbClient, nil, p)
 	if err != nil {
 		return "", fmt.Errorf("failed to delete duplicate COPPs: %w", err)
 	}
@@ -58,7 +59,7 @@ func EnsureDefaultCOPP(nbClient libovsdbclient.Client) (string, error) {
 		Action: types.MeterAction,
 		Rate:   int(25), // hard-coding for now. TODO(tssurya): make this configurable if needed
 	}
-	ops, err = libovsdbops.CreateMeterBandOps(nbClient, ops, band)
+	ops, err = ovnops.CreateMeterBandOps(nbClient, ops, band)
 	if err != nil {
 		return "", fmt.Errorf("can't create meter band %v: %v", band, err)
 	}
@@ -75,7 +76,7 @@ func EnsureDefaultCOPP(nbClient libovsdbclient.Client) (string, error) {
 			Fair: &meterFairness,
 			Unit: types.PacketsPerSecond,
 		}
-		ops, err = libovsdbops.CreateOrUpdateMeterOps(nbClient, ops, meter, []*nbdb.MeterBand{band},
+		ops, err = ovnops.CreateOrUpdateMeterOps(nbClient, ops, meter, []*nbdb.MeterBand{band},
 			&meter.Bands, &meter.Fair, &meter.Unit)
 		if err != nil {
 			return "", fmt.Errorf("can't create meter %v: %v", meter, err)
@@ -86,12 +87,12 @@ func EnsureDefaultCOPP(nbClient libovsdbclient.Client) (string, error) {
 		Name:   defaultCOPPName,
 		Meters: meterNames,
 	}
-	ops, err = libovsdbops.CreateOrUpdateCOPPsOps(nbClient, ops, defaultCOPP)
+	ops, err = ovnops.CreateOrUpdateCOPPsOps(nbClient, ops, defaultCOPP)
 	if err != nil {
 		return "", fmt.Errorf("failed to create/update default COPP: %w", err)
 	}
 
-	if _, err := libovsdbops.TransactAndCheckAndSetUUIDs(nbClient, defaultCOPP, ops); err != nil {
+	if _, err := ovsdbops.TransactAndCheckAndSetUUIDs(nbClient, defaultCOPP, ops); err != nil {
 		return "", fmt.Errorf("failed to transact default COPP: %w", err)
 	}
 

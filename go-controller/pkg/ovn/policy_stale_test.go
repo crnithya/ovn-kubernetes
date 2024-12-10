@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -44,7 +44,7 @@ func getStaleDefaultDenyACL(netpolName, namespace, match string, deny, egress bo
 		action = nbdb.ACLActionAllow
 		name = getStaleARPAllowACLName(namespace)
 	}
-	acl := libovsdbops.BuildACL(
+	acl := ovnops.BuildACL(
 		name,
 		nbdb.ACLDirectionToLport,
 		priority,
@@ -155,7 +155,7 @@ func getStalePolicyACLs(gressIdx int, namespace, policyName string, peerNamespac
 		// - no options for Egress ACLs
 		// - wrong direction for egress ACLs
 		// - non-nil Severity when Log is false
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			staleName,
 			nbdb.ACLDirectionToLport,
 			types.DefaultAllowPriority,

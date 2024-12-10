@@ -17,7 +17,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -133,10 +134,10 @@ var _ = ginkgo.Describe("Egress Firewall External DNS Operations", func() {
 			start()
 
 			checkAddrSets := func() int {
-				predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressFirewallDNS, extEgDNS.dnsTracker.controllerName, nil)
-				predicate := libovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
+				predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressFirewallDNS, extEgDNS.dnsTracker.controllerName, nil)
+				predicate := ovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
 
-				addrSets, err := libovsdbops.FindAddressSetsWithPredicate(nbClient, predicate)
+				addrSets, err := ovnops.FindAddressSetsWithPredicate(nbClient, predicate)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				return len(addrSets)
 			}

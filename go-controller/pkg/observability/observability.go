@@ -13,7 +13,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -37,12 +38,12 @@ const collectorFeaturesExternalID = "sample-features"
 type collectorConfig struct {
 	collectorSetID int
 	// probability in percent, 0 to 100
-	featuresProbability map[libovsdbops.SampleFeature]int
+	featuresProbability map[ovnops.SampleFeature]int
 }
 
 type Manager struct {
 	nbClient       libovsdbclient.Client
-	sampConfig     *libovsdbops.SamplingConfig
+	sampConfig     *ovnops.SamplingConfig
 	collectorsLock sync.Mutex
 	// nbdb Collectors have probability. To allow different probabilities for different features,
 	// multiple nbdb Collectors will be created, one per probability.
@@ -70,7 +71,7 @@ func NewManager(nbClient libovsdbclient.Client) *Manager {
 	}
 }
 
-func (m *Manager) SamplingConfig() *libovsdbops.SamplingConfig {
+func (m *Manager) SamplingConfig() *ovnops.SamplingConfig {
 	return m.sampConfig
 }
 
@@ -78,12 +79,12 @@ func (m *Manager) Init() error {
 	// this will be read from the kube-api in the future
 	currentConfig := &collectorConfig{
 		collectorSetID: DefaultObservabilityCollectorSetID,
-		featuresProbability: map[libovsdbops.SampleFeature]int{
-			libovsdbops.EgressFirewallSample:     100,
-			libovsdbops.NetworkPolicySample:      100,
-			libovsdbops.AdminNetworkPolicySample: 100,
-			libovsdbops.MulticastSample:          100,
-			libovsdbops.UDNIsolationSample:       100,
+		featuresProbability: map[ovnops.SampleFeature]int{
+			ovnops.EgressFirewallSample:     100,
+			ovnops.NetworkPolicySample:      100,
+			ovnops.AdminNetworkPolicySample: 100,
+			ovnops.MulticastSample:          100,
+			ovnops.UDNIsolationSample:       100,
 		},
 	}
 
@@ -102,7 +103,7 @@ func (m *Manager) initWithConfig(config *collectorConfig) error {
 	if err != nil {
 		return err
 	}
-	m.sampConfig = libovsdbops.NewSamplingConfig(featuresConfig)
+	m.sampConfig = ovnops.NewSamplingConfig(featuresConfig)
 
 	// now cleanup stale collectors
 	m.deleteStaleCollectorsWithRetry()
@@ -113,7 +114,7 @@ func (m *Manager) setDbCollectors() error {
 	m.collectorsLock.Lock()
 	defer m.collectorsLock.Unlock()
 	clear(m.dbCollectors)
-	collectors, err := libovsdbops.ListSampleCollectors(m.nbClient)
+	collectors, err := ovnops.ListSampleCollectors(m.nbClient)
 	if err != nil {
 		return fmt.Errorf("error getting sample collectors: %w", err)
 	}
@@ -153,7 +154,7 @@ func (m *Manager) deleteStaleCollectors() error {
 	var lastErr error
 	for collectorKey, collectorSetID := range m.unusedCollectors {
 		collectorUUID := m.dbCollectors[collectorKey]
-		err := libovsdbops.DeleteSampleCollector(m.nbClient, &nbdb.SampleCollector{
+		err := ovnops.DeleteSampleCollector(m.nbClient, &nbdb.SampleCollector{
 			UUID: collectorUUID,
 		})
 		if err != nil {
@@ -173,14 +174,14 @@ func (m *Manager) deleteStaleCollectors() error {
 // This is expected, and Cleanup may be retried on the next restart.
 func Cleanup(nbClient libovsdbclient.Client) error {
 	// Do the opposite of init
-	err := libovsdbops.DeleteSamplingAppsWithPredicate(nbClient, func(_ *nbdb.SamplingApp) bool {
+	err := ovnops.DeleteSamplingAppsWithPredicate(nbClient, func(_ *nbdb.SamplingApp) bool {
 		return true
 	})
 	if err != nil {
 		return fmt.Errorf("error deleting sampling apps: %w", err)
 	}
 
-	err = libovsdbops.DeleteSampleCollectorWithPredicate(nbClient, func(_ *nbdb.SampleCollector) bool {
+	err = ovnops.DeleteSampleCollectorWithPredicate(nbClient, func(_ *nbdb.SampleCollector) bool {
 		return true
 	})
 	if err != nil {
@@ -213,17 +214,17 @@ func (m *Manager) setSamplingAppIDs() error {
 			ID:   appConfig.id,
 			Type: appConfig.appType,
 		}
-		ops, err = libovsdbops.CreateOrUpdateSamplingAppsOps(m.nbClient, ops, samplingApp)
+		ops, err = ovnops.CreateOrUpdateSamplingAppsOps(m.nbClient, ops, samplingApp)
 		if err != nil {
 			return fmt.Errorf("error creating or updating sampling app %s: %w", appConfig.appType, err)
 		}
 	}
-	_, err = libovsdbops.TransactAndCheck(m.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(m.nbClient, ops)
 	return err
 }
 
-func groupByProbability(c *collectorConfig) map[int][]libovsdbops.SampleFeature {
-	probabilities := make(map[int][]libovsdbops.SampleFeature)
+func groupByProbability(c *collectorConfig) map[int][]ovnops.SampleFeature {
+	probabilities := make(map[int][]ovnops.SampleFeature)
 	for feature, percentProbability := range c.featuresProbability {
 		probability := percentToProbability(percentProbability)
 		probabilities[probability] = append(probabilities[probability], feature)
@@ -244,10 +245,10 @@ func (m *Manager) getFreeCollectorID() (int, error) {
 	return 0, fmt.Errorf("no free collector IDs")
 }
 
-func (m *Manager) addCollector(conf *collectorConfig) (map[libovsdbops.SampleFeature][]string, error) {
+func (m *Manager) addCollector(conf *collectorConfig) (map[ovnops.SampleFeature][]string, error) {
 	m.collectorsLock.Lock()
 	defer m.collectorsLock.Unlock()
-	sampleFeaturesConfig := make(map[libovsdbops.SampleFeature][]string)
+	sampleFeaturesConfig := make(map[ovnops.SampleFeature][]string)
 	probabilityConfig := groupByProbability(conf)
 
 	for probability, features := range probabilityConfig {
@@ -270,7 +271,7 @@ func (m *Manager) addCollector(conf *collectorConfig) (map[libovsdbops.SampleFea
 					collectorFeaturesExternalID: collectorFeatures,
 				},
 			}
-			err = libovsdbops.CreateOrUpdateSampleCollector(m.nbClient, collector)
+			err = ovnops.CreateOrUpdateSampleCollector(m.nbClient, collector)
 			if err != nil {
 				return sampleFeaturesConfig, err
 			}
@@ -285,7 +286,7 @@ func (m *Manager) addCollector(conf *collectorConfig) (map[libovsdbops.SampleFea
 					collectorFeaturesExternalID: collectorFeatures,
 				},
 			}
-			err := libovsdbops.UpdateSampleCollectorExternalIDs(m.nbClient, collector)
+			err := ovnops.UpdateSampleCollectorExternalIDs(m.nbClient, collector)
 			if err != nil {
 				return sampleFeaturesConfig, err
 			}

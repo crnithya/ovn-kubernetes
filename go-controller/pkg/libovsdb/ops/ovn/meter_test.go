@@ -1,9 +1,10 @@
-package ops
+package ovn
 
 import (
 	"fmt"
 	"testing"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 )
@@ -27,7 +28,7 @@ func TestCreateMeterBandOps(t *testing.T) {
 			initialNbdb: libovsdbtest.TestSetup{
 				NBData: []libovsdbtest.TestData{
 					&nbdb.Meter{
-						UUID:  buildNamedUUID(),
+						UUID:  ovsdbops.BuildNamedUUID(),
 						Bands: []string{secondUUID, firstUUID, thirdUUID},
 					},
 					&nbdb.MeterBand{

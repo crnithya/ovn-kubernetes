@@ -128,7 +128,7 @@ func TestAdd(t *testing.T) {
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
 				{
 					OnCallMethodName:    "NewAddressSet",
-					OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"},
+					OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"},
 					RetArgList:          []interface{}{nil, fmt.Errorf("mock error")},
 					CallTimes:           1,
 				},
@@ -158,7 +158,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -193,7 +193,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -227,7 +227,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, RetArgList: []interface{}{mockAddressSetOps, nil}, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, RetArgList: []interface{}{mockAddressSetOps, nil}, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -271,7 +271,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -317,7 +317,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{
@@ -480,7 +480,7 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			addressSetFactoryOpsHelper: []ovntest.TestifyMockHelper{
-				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ops.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
+				{OnCallMethodName: "NewAddressSet", OnCallMethodArgType: []string{"*ovsdb.DbObjectIDs", "[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{mockAddressSetOps, nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},
 			},
 			addressSetOpsHelper: []ovntest.TestifyMockHelper{
 				{OnCallMethodName: "SetAddresses", OnCallMethodArgType: []string{"[]string"}, OnCallMethodArgs: []interface{}{}, RetArgList: []interface{}{nil}, OnCallMethodsArgsStrTypeAppendCount: 0, CallTimes: 1},

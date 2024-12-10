@@ -17,7 +17,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -47,7 +47,7 @@ type PodSelectorAddressSet struct {
 	// if needsCleanup is true, try to cleanup before doing any other ops,
 	// is cleanup returns error, return error for the op
 	needsCleanup bool
-	addrSetDbIDs *libovsdbops.DbObjectIDs
+	addrSetDbIDs *ovsdbops.DbObjectIDs
 
 	// handlerResources holds the data that is used and updated by the handlers.
 	handlerResources *PodSelectorAddrSetHandlerInfo
@@ -628,10 +628,10 @@ func (bnc *BaseNetworkController) handleNamespaceDel(podHandlerInfo *PodSelector
 	return utilerrors.Join(errs...)
 }
 
-func getPodSelectorAddrSetDbIDs(psasKey, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetPodSelector, controller, map[libovsdbops.ExternalIDKey]string{
+func getPodSelectorAddrSetDbIDs(psasKey, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetPodSelector, controller, map[ovsdbops.ExternalIDKey]string{
 		// pod selector address sets are cluster-scoped, only need name
-		libovsdbops.ObjectNameKey: psasKey,
+		ovsdbops.ObjectNameKey: psasKey,
 	})
 }
 
@@ -716,13 +716,13 @@ func (bnc *BaseNetworkController) cleanupPodSelectorAddressSets() error {
 		return fmt.Errorf("can't delete stale netpol address sets %w", err)
 	}
 
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetPodSelector, bnc.controllerName, nil)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetPodSelector, bnc.controllerName, nil)
 	return libovsdbutil.DeleteAddrSetsWithoutACLRef(predicateIDs, bnc.nbClient)
 }
 
 // network policies will start using new shared address sets after the initial Add events handling.
 // On the next restart old address sets will be unreferenced and can be safely deleted.
 func (bnc *BaseNetworkController) deleteStaleNetpolPeerAddrSets() error {
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNetworkPolicy, bnc.controllerName, nil)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNetworkPolicy, bnc.controllerName, nil)
 	return libovsdbutil.DeleteAddrSetsWithoutACLRef(predicateIDs, bnc.nbClient)
 }

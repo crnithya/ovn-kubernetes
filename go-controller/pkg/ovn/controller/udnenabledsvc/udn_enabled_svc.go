@@ -20,7 +20,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 )
@@ -108,9 +108,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) error {
 }
 
 // GetAddressSetDBIDs returns the DB IDs of the address set managed by this controller - an address set for each IP family enabled.
-func GetAddressSetDBIDs() *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetUDNEnabledService, controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: addressSetName,
+func GetAddressSetDBIDs() *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetUDNEnabledService, controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: addressSetName,
 	})
 }
 

@@ -18,7 +18,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/generator/udn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/networkmanager"
@@ -459,7 +459,7 @@ func (oc *SecondaryLayer2NetworkController) Cleanup() error {
 	for _, lbGroupUUID := range []string{oc.switchLoadBalancerGroupUUID, oc.clusterLoadBalancerGroupUUID, oc.routerLoadBalancerGroupUUID} {
 		lbGroups = append(lbGroups, &nbdb.LoadBalancerGroup{UUID: lbGroupUUID})
 	}
-	if err := libovsdbops.DeleteLoadBalancerGroups(oc.nbClient, lbGroups); err != nil {
+	if err := ovnops.DeleteLoadBalancerGroups(oc.nbClient, lbGroups); err != nil {
 		klog.Errorf("Failed to delete load balancer groups on network: %q, error: %v", oc.GetNetworkName(), err)
 	}
 
@@ -722,7 +722,7 @@ func (oc *SecondaryLayer2NetworkController) addPortForRemoteNodeGR(node *corev1.
 		"requested-chassis": node.Name,
 	}
 	sw := nbdb.LogicalSwitch{Name: oc.GetNetworkScopedSwitchName(types.OVNLayer2Switch)}
-	err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitch(oc.nbClient, &sw, &logicalSwitchPort)
+	err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitch(oc.nbClient, &sw, &logicalSwitchPort)
 	if err != nil {
 		return fmt.Errorf("failed to create port %v on logical switch %q: %v", logicalSwitchPort, sw.Name, err)
 	}
@@ -762,7 +762,7 @@ func (oc *SecondaryLayer2NetworkController) addUDNClusterSubnetEgressSNAT(localP
 	router := &nbdb.LogicalRouter{
 		Name: routerName,
 	}
-	if err := libovsdbops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
+	if err := ovnops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
 		return fmt.Errorf("failed to update SNAT for cluster on router: %q for network %q, error: %w",
 			routerName, oc.GetNetworkName(), err)
 	}
@@ -781,7 +781,7 @@ func (oc *SecondaryLayer2NetworkController) deleteUDNClusterSubnetEgressSNAT(loc
 	router := &nbdb.LogicalRouter{
 		Name: routerName,
 	}
-	if err := libovsdbops.DeleteNATs(oc.nbClient, router, nats...); err != nil {
+	if err := ovnops.DeleteNATs(oc.nbClient, router, nats...); err != nil {
 		return fmt.Errorf("failed to delete SNAT for cluster on router: %q for network %q, error: %w",
 			routerName, oc.GetNetworkName(), err)
 	}

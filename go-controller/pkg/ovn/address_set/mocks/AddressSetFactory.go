@@ -6,7 +6,7 @@ import (
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	mock "github.com/stretchr/testify/mock"
 
-	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 
 	ovsdb "github.com/ovn-org/libovsdb/ovsdb"
 )
@@ -17,7 +17,7 @@ type AddressSetFactory struct {
 }
 
 // DestroyAddressSet provides a mock function with given fields: dbIDs
-func (_m *AddressSetFactory) DestroyAddressSet(dbIDs *ops.DbObjectIDs) error {
+func (_m *AddressSetFactory) DestroyAddressSet(dbIDs *ovsdbops.DbObjectIDs) error {
 	ret := _m.Called(dbIDs)
 
 	if len(ret) == 0 {
@@ -25,7 +25,7 @@ func (_m *AddressSetFactory) DestroyAddressSet(dbIDs *ops.DbObjectIDs) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) error); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) error); ok {
 		r0 = rf(dbIDs)
 	} else {
 		r0 = ret.Error(0)
@@ -35,7 +35,7 @@ func (_m *AddressSetFactory) DestroyAddressSet(dbIDs *ops.DbObjectIDs) error {
 }
 
 // EnsureAddressSet provides a mock function with given fields: dbIDs
-func (_m *AddressSetFactory) EnsureAddressSet(dbIDs *ops.DbObjectIDs) (addressset.AddressSet, error) {
+func (_m *AddressSetFactory) EnsureAddressSet(dbIDs *ovsdbops.DbObjectIDs) (addressset.AddressSet, error) {
 	ret := _m.Called(dbIDs)
 
 	if len(ret) == 0 {
@@ -44,10 +44,10 @@ func (_m *AddressSetFactory) EnsureAddressSet(dbIDs *ops.DbObjectIDs) (addressse
 
 	var r0 addressset.AddressSet
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) (addressset.AddressSet, error)); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) (addressset.AddressSet, error)); ok {
 		return rf(dbIDs)
 	}
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) addressset.AddressSet); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) addressset.AddressSet); ok {
 		r0 = rf(dbIDs)
 	} else {
 		if ret.Get(0) != nil {
@@ -55,7 +55,7 @@ func (_m *AddressSetFactory) EnsureAddressSet(dbIDs *ops.DbObjectIDs) (addressse
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*ops.DbObjectIDs) error); ok {
+	if rf, ok := ret.Get(1).(func(*ovsdbops.DbObjectIDs) error); ok {
 		r1 = rf(dbIDs)
 	} else {
 		r1 = ret.Error(1)
@@ -65,7 +65,7 @@ func (_m *AddressSetFactory) EnsureAddressSet(dbIDs *ops.DbObjectIDs) (addressse
 }
 
 // GetAddressSet provides a mock function with given fields: dbIDs
-func (_m *AddressSetFactory) GetAddressSet(dbIDs *ops.DbObjectIDs) (addressset.AddressSet, error) {
+func (_m *AddressSetFactory) GetAddressSet(dbIDs *ovsdbops.DbObjectIDs) (addressset.AddressSet, error) {
 	ret := _m.Called(dbIDs)
 
 	if len(ret) == 0 {
@@ -74,10 +74,10 @@ func (_m *AddressSetFactory) GetAddressSet(dbIDs *ops.DbObjectIDs) (addressset.A
 
 	var r0 addressset.AddressSet
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) (addressset.AddressSet, error)); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) (addressset.AddressSet, error)); ok {
 		return rf(dbIDs)
 	}
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) addressset.AddressSet); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) addressset.AddressSet); ok {
 		r0 = rf(dbIDs)
 	} else {
 		if ret.Get(0) != nil {
@@ -85,7 +85,7 @@ func (_m *AddressSetFactory) GetAddressSet(dbIDs *ops.DbObjectIDs) (addressset.A
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*ops.DbObjectIDs) error); ok {
+	if rf, ok := ret.Get(1).(func(*ovsdbops.DbObjectIDs) error); ok {
 		r1 = rf(dbIDs)
 	} else {
 		r1 = ret.Error(1)
@@ -95,7 +95,7 @@ func (_m *AddressSetFactory) GetAddressSet(dbIDs *ops.DbObjectIDs) (addressset.A
 }
 
 // NewAddressSet provides a mock function with given fields: dbIDs, addresses
-func (_m *AddressSetFactory) NewAddressSet(dbIDs *ops.DbObjectIDs, addresses []string) (addressset.AddressSet, error) {
+func (_m *AddressSetFactory) NewAddressSet(dbIDs *ovsdbops.DbObjectIDs, addresses []string) (addressset.AddressSet, error) {
 	ret := _m.Called(dbIDs, addresses)
 
 	if len(ret) == 0 {
@@ -104,10 +104,10 @@ func (_m *AddressSetFactory) NewAddressSet(dbIDs *ops.DbObjectIDs, addresses []s
 
 	var r0 addressset.AddressSet
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs, []string) (addressset.AddressSet, error)); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs, []string) (addressset.AddressSet, error)); ok {
 		return rf(dbIDs, addresses)
 	}
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs, []string) addressset.AddressSet); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs, []string) addressset.AddressSet); ok {
 		r0 = rf(dbIDs, addresses)
 	} else {
 		if ret.Get(0) != nil {
@@ -115,7 +115,7 @@ func (_m *AddressSetFactory) NewAddressSet(dbIDs *ops.DbObjectIDs, addresses []s
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*ops.DbObjectIDs, []string) error); ok {
+	if rf, ok := ret.Get(1).(func(*ovsdbops.DbObjectIDs, []string) error); ok {
 		r1 = rf(dbIDs, addresses)
 	} else {
 		r1 = ret.Error(1)
@@ -125,7 +125,7 @@ func (_m *AddressSetFactory) NewAddressSet(dbIDs *ops.DbObjectIDs, addresses []s
 }
 
 // NewAddressSetOps provides a mock function with given fields: dbIDs, addresses
-func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ops.DbObjectIDs, addresses []string) (addressset.AddressSet, []ovsdb.Operation, error) {
+func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ovsdbops.DbObjectIDs, addresses []string) (addressset.AddressSet, []ovsdb.Operation, error) {
 	ret := _m.Called(dbIDs, addresses)
 
 	if len(ret) == 0 {
@@ -135,10 +135,10 @@ func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ops.DbObjectIDs, addresses 
 	var r0 addressset.AddressSet
 	var r1 []ovsdb.Operation
 	var r2 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs, []string) (addressset.AddressSet, []ovsdb.Operation, error)); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs, []string) (addressset.AddressSet, []ovsdb.Operation, error)); ok {
 		return rf(dbIDs, addresses)
 	}
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs, []string) addressset.AddressSet); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs, []string) addressset.AddressSet); ok {
 		r0 = rf(dbIDs, addresses)
 	} else {
 		if ret.Get(0) != nil {
@@ -146,7 +146,7 @@ func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ops.DbObjectIDs, addresses 
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*ops.DbObjectIDs, []string) []ovsdb.Operation); ok {
+	if rf, ok := ret.Get(1).(func(*ovsdbops.DbObjectIDs, []string) []ovsdb.Operation); ok {
 		r1 = rf(dbIDs, addresses)
 	} else {
 		if ret.Get(1) != nil {
@@ -154,7 +154,7 @@ func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ops.DbObjectIDs, addresses 
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(*ops.DbObjectIDs, []string) error); ok {
+	if rf, ok := ret.Get(2).(func(*ovsdbops.DbObjectIDs, []string) error); ok {
 		r2 = rf(dbIDs, addresses)
 	} else {
 		r2 = ret.Error(2)
@@ -164,7 +164,7 @@ func (_m *AddressSetFactory) NewAddressSetOps(dbIDs *ops.DbObjectIDs, addresses 
 }
 
 // ProcessEachAddressSet provides a mock function with given fields: ownerController, dbIDsType, iteratorFn
-func (_m *AddressSetFactory) ProcessEachAddressSet(ownerController string, dbIDsType *ops.ObjectIDsType, iteratorFn addressset.AddressSetIterFunc) error {
+func (_m *AddressSetFactory) ProcessEachAddressSet(ownerController string, dbIDsType *ovsdbops.ObjectIDsType, iteratorFn addressset.AddressSetIterFunc) error {
 	ret := _m.Called(ownerController, dbIDsType, iteratorFn)
 
 	if len(ret) == 0 {
@@ -172,7 +172,7 @@ func (_m *AddressSetFactory) ProcessEachAddressSet(ownerController string, dbIDs
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *ops.ObjectIDsType, addressset.AddressSetIterFunc) error); ok {
+	if rf, ok := ret.Get(0).(func(string, *ovsdbops.ObjectIDsType, addressset.AddressSetIterFunc) error); ok {
 		r0 = rf(ownerController, dbIDsType, iteratorFn)
 	} else {
 		r0 = ret.Error(0)

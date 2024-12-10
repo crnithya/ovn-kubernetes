@@ -1,10 +1,11 @@
-package ops
+package ovn
 
 import (
 	"fmt"
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 )
 
@@ -21,14 +22,14 @@ func UpdatePortBindingSetChassis(sbClient libovsdbclient.Client, portBinding *sb
 	}
 	portBinding.Chassis = &ch.UUID
 
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          portBinding,
 		OnModelUpdates: []interface{}{&portBinding.Chassis},
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(sbClient)
+	m := ovsdbops.NewModelClient(sbClient)
 	_, err = m.CreateOrUpdate(opModel)
 	return err
 }
@@ -36,14 +37,14 @@ func UpdatePortBindingSetChassis(sbClient libovsdbclient.Client, portBinding *sb
 // GetPortBinding looks up a portBinding in SBDB
 func GetPortBinding(sbClient libovsdbclient.Client, portBinding *sbdb.PortBinding) (*sbdb.PortBinding, error) {
 	found := []*sbdb.PortBinding{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          portBinding,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(sbClient)
+	m := ovsdbops.NewModelClient(sbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err

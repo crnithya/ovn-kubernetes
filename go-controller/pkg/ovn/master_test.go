@@ -33,7 +33,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/networkmanager"
@@ -1160,7 +1160,7 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 			}
 			ginkgo.By("Creating stale route")
 			p := func(*nbdb.LogicalRouterStaticRoute) bool { return false }
-			err = libovsdbops.CreateOrReplaceLogicalRouterStaticRouteWithPredicate(nbClient,
+			err = ovnops.CreateOrReplaceLogicalRouterStaticRouteWithPredicate(nbClient,
 				types.OVNClusterRouter, badRoute, p)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			ginkgo.By("Syncing node with OVNK")
@@ -1247,7 +1247,7 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 				GR := &nbdb.LogicalRouter{
 					Name: types.GWRouterPrefix + node1.Name,
 				}
-				err = libovsdbops.CreateOrUpdateNATs(nbClient, GR, extraNats...)
+				err = ovnops.CreateOrUpdateNATs(nbClient, GR, extraNats...)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// generate specific test conditions
@@ -1564,15 +1564,15 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 			gatewayRouter := types.GWRouterPrefix + node1.Name
 			lr := &nbdb.LogicalRouter{Name: gatewayRouter}
 			lrp := &nbdb.LogicalRouterPort{Name: types.GWRouterToJoinSwitchPrefix + gatewayRouter}
-			lrp, err = libovsdbops.GetLogicalRouterPort(nbClient, lrp)
+			lrp, err = ovnops.GetLogicalRouterPort(nbClient, lrp)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			err = libovsdbops.DeleteLogicalRouterPorts(nbClient, lr, lrp)
+			err = ovnops.DeleteLogicalRouterPorts(nbClient, lr, lrp)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			_, err = libovsdbops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: node1.Name})
+			_, err = ovnops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: node1.Name})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			externalSwitch := types.ExternalSwitchPrefix + node1.Name
-			_, err = libovsdbops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: externalSwitch})
+			_, err = ovnops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: externalSwitch})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Node delete should not fail
@@ -1580,17 +1580,17 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			gomega.Eventually(func() bool {
-				_, err := libovsdbops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: node1.Name})
+				_, err := ovnops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: node1.Name})
 				return errors.Is(err, libovsdbclient.ErrNotFound)
 			}, 10).Should(gomega.BeTrue())
 
 			gomega.Eventually(func() bool {
-				_, err := libovsdbops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: externalSwitch})
+				_, err := ovnops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: externalSwitch})
 				return errors.Is(err, libovsdbclient.ErrNotFound)
 			}, 10).Should(gomega.BeTrue())
 
 			gomega.Eventually(func() bool {
-				_, err = libovsdbops.GetLogicalRouter(nbClient, &nbdb.LogicalRouter{Name: gatewayRouter})
+				_, err = ovnops.GetLogicalRouter(nbClient, &nbdb.LogicalRouter{Name: gatewayRouter})
 				return errors.Is(err, libovsdbclient.ErrNotFound)
 			}, 10).Should(gomega.BeTrue())
 
@@ -1688,7 +1688,7 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 			// are reconciled by the network cluster controller
 			newNodeLS := &nbdb.LogicalSwitch{Name: newNode.Name}
 			gomega.Eventually(func() error {
-				_, err := libovsdbops.GetLogicalSwitch(nbClient, newNodeLS)
+				_, err := ovnops.GetLogicalSwitch(nbClient, newNodeLS)
 				return err
 			}, 10).ShouldNot(gomega.HaveOccurred())
 
@@ -1741,7 +1741,7 @@ var _ = ginkgo.Describe("Default network controller operations", func() {
 			// Ensure that the node's switch is eventually created once the annotations
 			// are reconciled by the network cluster controller
 			gomega.Eventually(func() bool {
-				newNodeLS, err := libovsdbops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: newNode.Name})
+				newNodeLS, err := ovnops.GetLogicalSwitch(nbClient, &nbdb.LogicalSwitch{Name: newNode.Name})
 				if err != nil {
 					return false
 				}

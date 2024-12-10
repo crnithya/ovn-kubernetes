@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -61,11 +62,11 @@ func BuildLoadBalancer(name string, protocol nbdb.LoadBalancerProtocol, selectio
 // CreateOrUpdateLoadBalancersOps creates or updates the provided load balancers
 // returning the corresponding ops
 func CreateOrUpdateLoadBalancersOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, lbs ...*nbdb.LoadBalancer) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(lbs))
+	opModels := make([]ovsdbops.OperationModel, 0, len(lbs))
 	for i := range lbs {
 		// can't use i in the predicate, for loop replaces it in-memory
 		lb := lbs[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          lb,
 			OnModelUpdates: getNonZeroLoadBalancerMutableFields(lb),
 			ErrNotFound:    false,
@@ -74,7 +75,7 @@ func CreateOrUpdateLoadBalancersOps(nbClient libovsdbclient.Client, ops []ovsdb.
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
@@ -86,14 +87,14 @@ func RemoveLoadBalancerVipsOps(nbClient libovsdbclient.Client, ops []ovsdb.Opera
 	for _, vip := range vips {
 		lb.Vips[vip] = ""
 	}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            lb,
 		OnModelMutations: []interface{}{&lb.Vips},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	ops, err := modelClient.DeleteOps(ops, opModel)
 	lb.Vips = originalVips
 	return ops, err
@@ -102,11 +103,11 @@ func RemoveLoadBalancerVipsOps(nbClient libovsdbclient.Client, ops []ovsdb.Opera
 // DeleteLoadBalancersOps deletes the provided load balancers and returns the
 // corresponding ops
 func DeleteLoadBalancersOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, lbs ...*nbdb.LoadBalancer) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(lbs))
+	opModels := make([]ovsdbops.OperationModel, 0, len(lbs))
 	for i := range lbs {
 		// can't use i in the predicate, for loop replaces it in-memory
 		lb := lbs[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:       lb,
 			ErrNotFound: false,
 			BulkOp:      false,
@@ -114,7 +115,7 @@ func DeleteLoadBalancersOps(nbClient libovsdbclient.Client, ops []ovsdb.Operatio
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.DeleteOps(ops, opModels...)
 }
 
@@ -125,7 +126,7 @@ func DeleteLoadBalancers(nbClient libovsdbclient.Client, lbs []*nbdb.LoadBalance
 		return err
 	}
 
-	_, err = TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 

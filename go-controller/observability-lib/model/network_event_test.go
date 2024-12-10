@@ -3,20 +3,20 @@ package model
 import (
 	"testing"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
 var mapping = map[string]string{
-	egressFirewallOwnerType:             libovsdbops.EgressFirewallOwnerType,
-	adminNetworkPolicyOwnerType:         libovsdbops.AdminNetworkPolicyOwnerType,
-	baselineAdminNetworkPolicyOwnerType: libovsdbops.BaselineAdminNetworkPolicyOwnerType,
-	networkPolicyOwnerType:              libovsdbops.NetworkPolicyOwnerType,
-	multicastNamespaceOwnerType:         libovsdbops.MulticastNamespaceOwnerType,
-	multicastClusterOwnerType:           libovsdbops.MulticastClusterOwnerType,
-	netpolNodeOwnerType:                 libovsdbops.NetpolNodeOwnerType,
-	netpolNamespaceOwnerType:            libovsdbops.NetpolNamespaceOwnerType,
-	udnIsolationOwnerType:               libovsdbops.UDNIsolationOwnerType,
+	egressFirewallOwnerType:             ovsdbops.EgressFirewallOwnerType,
+	adminNetworkPolicyOwnerType:         ovsdbops.AdminNetworkPolicyOwnerType,
+	baselineAdminNetworkPolicyOwnerType: ovsdbops.BaselineAdminNetworkPolicyOwnerType,
+	networkPolicyOwnerType:              ovsdbops.NetworkPolicyOwnerType,
+	multicastNamespaceOwnerType:         ovsdbops.MulticastNamespaceOwnerType,
+	multicastClusterOwnerType:           ovsdbops.MulticastClusterOwnerType,
+	netpolNodeOwnerType:                 ovsdbops.NetpolNodeOwnerType,
+	netpolNamespaceOwnerType:            ovsdbops.NetpolNamespaceOwnerType,
+	udnIsolationOwnerType:               ovsdbops.UDNIsolationOwnerType,
 	aclActionAllow:                      nbdb.ACLActionAllow,
 	aclActionAllowRelated:               nbdb.ACLActionAllowRelated,
 	aclActionAllowStateless:             nbdb.ACLActionAllowStateless,

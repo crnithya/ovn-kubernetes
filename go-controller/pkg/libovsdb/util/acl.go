@@ -9,7 +9,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	ovnkubeutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -67,31 +68,31 @@ func JoinACLName(substrings ...string) string {
 // Just a namespace name may be 63 symbols long, therefore some information may be cropped.
 // Therefore, "feature" as "EF" for EgressFirewall and "NP" for network policy goes first, then namespace,
 // then acl-related info.
-func GetACLName(dbIDs *libovsdbops.DbObjectIDs) string {
+func GetACLName(dbIDs *ovsdbops.DbObjectIDs) string {
 	t := dbIDs.GetIDsType()
 	aclName := ""
 	switch {
-	case t.IsSameType(libovsdbops.ACLNetworkPolicy):
-		aclName = "NP:" + dbIDs.GetObjectID(libovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(libovsdbops.PolicyDirectionKey) +
-			":" + dbIDs.GetObjectID(libovsdbops.GressIdxKey)
-	case t.IsSameType(libovsdbops.ACLNetpolNamespace):
-		aclName = "NP:" + dbIDs.GetObjectID(libovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(libovsdbops.PolicyDirectionKey)
-	case t.IsSameType(libovsdbops.ACLEgressFirewall):
-		aclName = "EF:" + dbIDs.GetObjectID(libovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(libovsdbops.RuleIndex)
-	case t.IsSameType(libovsdbops.ACLAdminNetworkPolicy):
-		aclName = "ANP:" + dbIDs.GetObjectID(libovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(libovsdbops.PolicyDirectionKey) +
-			":" + dbIDs.GetObjectID(libovsdbops.GressIdxKey)
-	case t.IsSameType(libovsdbops.ACLBaselineAdminNetworkPolicy):
-		aclName = "BANP:" + dbIDs.GetObjectID(libovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(libovsdbops.PolicyDirectionKey) +
-			":" + dbIDs.GetObjectID(libovsdbops.GressIdxKey)
+	case t.IsSameType(ovsdbops.ACLNetworkPolicy):
+		aclName = "NP:" + dbIDs.GetObjectID(ovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(ovsdbops.PolicyDirectionKey) +
+			":" + dbIDs.GetObjectID(ovsdbops.GressIdxKey)
+	case t.IsSameType(ovsdbops.ACLNetpolNamespace):
+		aclName = "NP:" + dbIDs.GetObjectID(ovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(ovsdbops.PolicyDirectionKey)
+	case t.IsSameType(ovsdbops.ACLEgressFirewall):
+		aclName = "EF:" + dbIDs.GetObjectID(ovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(ovsdbops.RuleIndex)
+	case t.IsSameType(ovsdbops.ACLAdminNetworkPolicy):
+		aclName = "ANP:" + dbIDs.GetObjectID(ovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(ovsdbops.PolicyDirectionKey) +
+			":" + dbIDs.GetObjectID(ovsdbops.GressIdxKey)
+	case t.IsSameType(ovsdbops.ACLBaselineAdminNetworkPolicy):
+		aclName = "BANP:" + dbIDs.GetObjectID(ovsdbops.ObjectNameKey) + ":" + dbIDs.GetObjectID(ovsdbops.PolicyDirectionKey) +
+			":" + dbIDs.GetObjectID(ovsdbops.GressIdxKey)
 	}
 	return fmt.Sprintf("%.63s", aclName)
 }
 
-// BuildACL should be used to build ACL instead of directly calling libovsdbops.BuildACL.
+// BuildACL should be used to build ACL instead of directly calling ovsdbops.BuildACL.
 // It can properly set and reset log settings for ACL based on ACLLoggingLevels, and
 // set acl.Name and acl.ExternalIDs based on given DbIDs
-func BuildACL(dbIDs *libovsdbops.DbObjectIDs, priority int, match, action string, logLevels *ACLLoggingLevels,
+func BuildACL(dbIDs *ovsdbops.DbObjectIDs, priority int, match, action string, logLevels *ACLLoggingLevels,
 	aclT ACLPipelineType) *nbdb.ACL {
 	var options map[string]string
 	var direction string
@@ -111,7 +112,7 @@ func BuildACL(dbIDs *libovsdbops.DbObjectIDs, priority int, match, action string
 	externalIDs := dbIDs.GetExternalIDs()
 	aclName := GetACLName(dbIDs)
 	log, logSeverity := getLogSeverity(action, logLevels)
-	ACL := libovsdbops.BuildACL(
+	ACL := ovnops.BuildACL(
 		aclName,
 		direction,
 		priority,
@@ -127,18 +128,18 @@ func BuildACL(dbIDs *libovsdbops.DbObjectIDs, priority int, match, action string
 	return ACL
 }
 
-func BuildANPACL(dbIDs *libovsdbops.DbObjectIDs, priority int, match, action string, aclT ACLPipelineType, logLevels *ACLLoggingLevels) *nbdb.ACL {
+func BuildANPACL(dbIDs *ovsdbops.DbObjectIDs, priority int, match, action string, aclT ACLPipelineType, logLevels *ACLLoggingLevels) *nbdb.ACL {
 	anpACL := BuildACL(dbIDs, priority, match, action, logLevels, aclT)
 	anpACL.Tier = GetACLTier(dbIDs)
 	return anpACL
 }
 
-func GetACLTier(dbIDs *libovsdbops.DbObjectIDs) int {
+func GetACLTier(dbIDs *ovsdbops.DbObjectIDs) int {
 	t := dbIDs.GetIDsType()
 	switch {
-	case t.IsSameType(libovsdbops.ACLAdminNetworkPolicy):
+	case t.IsSameType(ovsdbops.ACLAdminNetworkPolicy):
 		return types.DefaultANPACLTier
-	case t.IsSameType(libovsdbops.ACLBaselineAdminNetworkPolicy):
+	case t.IsSameType(ovsdbops.ACLBaselineAdminNetworkPolicy):
 		return types.DefaultBANPACLTier
 	default:
 		return types.DefaultACLTier
@@ -186,7 +187,7 @@ func getLogSeverity(action string, aclLogging *ACLLoggingLevels) (log bool, seve
 // UpdateACLLoggingWithPredicate finds all ACLs based on a given predicate, updates log settings,
 // then transacts these changes with a single transaction.
 func UpdateACLLoggingWithPredicate(nbClient libovsdbclient.Client, p func(*nbdb.ACL) bool, aclLogging *ACLLoggingLevels) error {
-	ACLs, err := libovsdbops.FindACLsWithPredicate(nbClient, p)
+	ACLs, err := ovnops.FindACLsWithPredicate(nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to list ACLs with predicate, err: %v", err)
 	}
@@ -199,13 +200,13 @@ func UpdateACLLogging(nbClient libovsdbclient.Client, ACLs []*nbdb.ACL, aclLoggi
 	}
 	for i := range ACLs {
 		log, severity := getLogSeverity(ACLs[i].Action, aclLogging)
-		libovsdbops.SetACLLogging(ACLs[i], severity, log)
+		ovnops.SetACLLogging(ACLs[i], severity, log)
 	}
-	ops, err := libovsdbops.UpdateACLsLoggingOps(nbClient, nil, ACLs...)
+	ops, err := ovnops.UpdateACLsLoggingOps(nbClient, nil, ACLs...)
 	if err != nil {
 		return fmt.Errorf("unable to get ACL logging ops: %v", err)
 	}
-	if _, err := libovsdbops.TransactAndCheck(nbClient, ops); err != nil {
+	if _, err := ovsdbops.TransactAndCheck(nbClient, ops); err != nil {
 		return fmt.Errorf("unable to update ACL logging: %v", err)
 	}
 	return nil
@@ -215,7 +216,7 @@ func UpdateACLLogging(nbClient libovsdbclient.Client, ACLs []*nbdb.ACL, aclLoggi
 const (
 	// UnspecifiedL4Protocol is used to create ACL for gressPolicy that
 	// doesn't have port policies hence no protocols. The value "None" here is
-	// used as the value in libovsdbops.PortPolicyProtocolKey DB Index and hence
+	// used as the value in ovsdbops.PortPolicyProtocolKey DB Index and hence
 	// that shouldn't be changed since it will cause a full ACL update during upgrades.
 	UnspecifiedL4Protocol = "None"
 	// UnspecifiedL4Match is used to create ACL for gressPolicy that

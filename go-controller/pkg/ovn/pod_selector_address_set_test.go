@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -318,7 +318,7 @@ var _ = ginkgo.Describe("OVN PodSelectorAddressSet", func() {
 		unusedPodSelAS, _ := addressset.GetTestDbAddrSets(unusedPodSelIDs, []string{"1.1.1.2"})
 		refNetpolIDs := getStaleNetpolAddrSetDbIDs(namespaceName, policyName, "egress", "0", DefaultNetworkControllerName)
 		refNetpolAS, _ := addressset.GetTestDbAddrSets(refNetpolIDs, []string{"1.1.1.3"})
-		netpolACL := libovsdbops.BuildACL(
+		netpolACL := ovnops.BuildACL(
 			"netpolACL",
 			nbdb.ACLDirectionFromLport,
 			types.EgressFirewallStartPriority,
@@ -336,7 +336,7 @@ var _ = ginkgo.Describe("OVN PodSelectorAddressSet", func() {
 		netpolACL.UUID = "netpolACL-UUID"
 		refPodSelIDs := getPodSelectorAddrSetDbIDs("pasName2", DefaultNetworkControllerName)
 		refPodSelAS, _ := addressset.GetTestDbAddrSets(refPodSelIDs, []string{"1.1.1.4"})
-		podSelACL := libovsdbops.BuildACL(
+		podSelACL := ovnops.BuildACL(
 			"podSelACL",
 			nbdb.ACLDirectionFromLport,
 			types.EgressFirewallStartPriority,

@@ -23,7 +23,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -89,7 +90,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	egressPGName := fakeController.defaultDenyPortGroupName(namespace, libovsdbutil.ACLEgress)
 	shouldBeLogged := denyLogSeverity != ""
 	aclIDs := fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLEgress, defaultDenyACL)
-	egressDenyACL := libovsdbops.BuildACL(
+	egressDenyACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionFromLport,
 		types.DefaultDenyPriority,
@@ -107,7 +108,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	egressDenyACL.UUID = aclIDs.String() + "-UUID"
 
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLEgress, arpAllowACL)
-	egressAllowACL := libovsdbops.BuildACL(
+	egressAllowACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionFromLport,
 		types.DefaultAllowPriority,
@@ -126,7 +127,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 
 	ingressPGName := fakeController.defaultDenyPortGroupName(namespace, libovsdbutil.ACLIngress)
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLIngress, defaultDenyACL)
-	ingressDenyACL := libovsdbops.BuildACL(
+	ingressDenyACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultDenyPriority,
@@ -142,7 +143,7 @@ func getDefaultDenyDataHelper(policyTypeIngress, policyTypeEgress bool, params *
 	ingressDenyACL.UUID = aclIDs.String() + "-UUID"
 
 	aclIDs = fakeController.getDefaultDenyPolicyACLIDs(namespace, libovsdbutil.ACLIngress, arpAllowACL)
-	ingressAllowACL := libovsdbops.BuildACL(
+	ingressAllowACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(aclIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -278,7 +279,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 			action = nbdb.ACLActionAllowStateless
 		}
 		dbIDs := gp.getNetpolACLDbIDs(emptyIdx, libovsdbutil.UnspecifiedL4Protocol)
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -297,7 +298,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 	for i, ipBlock := range ipBlocks {
 		match := fmt.Sprintf("ip4.%s == %s && %s == @%s", ipDir, ipBlock, portDir, pgName)
 		dbIDs := gp.getNetpolACLDbIDs(i, libovsdbutil.UnspecifiedL4Protocol)
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -315,7 +316,7 @@ func getGressACLs(gressIdx int, peers []knet.NetworkPolicyPeer, policyType knet.
 	}
 	for _, v := range params.tcpPeerPorts {
 		dbIDs := gp.getNetpolACLDbIDs(emptyIdx, "tcp")
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			libovsdbutil.GetACLName(dbIDs),
 			direction,
 			types.DefaultAllowPriority,
@@ -458,7 +459,7 @@ func getHairpinningACLsV4AndPortGroupForNetwork(netInfo util.NetInfo, ports []st
 	clusterPortGroup := newNetworkClusterPortGroup(netInfo)
 	fakeController := getFakeController(controllerName)
 	egressIDs := fakeController.getNetpolDefaultACLDbIDs("Egress")
-	egressACL := libovsdbops.BuildACL(
+	egressACL := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionFromLport,
 		types.DefaultAllowPriority,
@@ -475,7 +476,7 @@ func getHairpinningACLsV4AndPortGroupForNetwork(netInfo util.NetInfo, ports []st
 	)
 	egressACL.UUID = fmt.Sprintf("hp-egress-%s", controllerName)
 	ingressIDs := fakeController.getNetpolDefaultACLDbIDs("Ingress")
-	ingressACL := libovsdbops.BuildACL(
+	ingressACL := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -1761,9 +1762,9 @@ var _ = ginkgo.Describe("OVN NetworkPolicy Operations", func() {
 
 				// emulate namespace handler adding management IPs for this address set
 				// we could let controller do that, but that would require adding nodes with their annotations
-				dbIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, fakeOvn.controller.controllerName,
-					map[libovsdbops.ExternalIDKey]string{
-						libovsdbops.ObjectNameKey: hostNamespaceName,
+				dbIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, fakeOvn.controller.controllerName,
+					map[ovsdbops.ExternalIDKey]string{
+						ovsdbops.ObjectNameKey: hostNamespaceName,
 					})
 				// random set of IPs
 				as, err := fakeOvn.controller.addressSetFactory.GetAddressSet(dbIDs)
@@ -2096,7 +2097,7 @@ func getAllowFromNodeExpectedACL(nodeName, mgmtIP string, logicalSwitch *nbdb.Lo
 	match := fmt.Sprintf("%s.src==%s", ipFamily, mgmtIP)
 
 	dbIDs := getAllowFromNodeACLDbIDs(nodeName, mgmtIP, controllerName)
-	nodeACL := libovsdbops.BuildACL(
+	nodeACL := ovnops.BuildACL(
 		libovsdbutil.GetACLName(dbIDs),
 		nbdb.ACLDirectionToLport,
 		types.DefaultAllowPriority,
@@ -2251,7 +2252,7 @@ var _ = ginkgo.Describe("OVN AllowFromNode ACL low-level operations", func() {
 var _ = ginkgo.Describe("OVN NetworkPolicy Low-Level Operations", func() {
 	var asFactory *addressset.FakeAddressSetFactory
 
-	buildExpectedIngressPeerNSv4ACL := func(gp *gressPolicy, pgName string, asDbIDses []*libovsdbops.DbObjectIDs,
+	buildExpectedIngressPeerNSv4ACL := func(gp *gressPolicy, pgName string, asDbIDses []*ovsdbops.DbObjectIDs,
 		aclLogging *libovsdbutil.ACLLoggingLevels) *nbdb.ACL {
 		aclIDs := gp.getNetpolACLDbIDs(emptyIdx, libovsdbutil.UnspecifiedL4Protocol)
 		hashedASNames := []string{}
@@ -2262,7 +2263,7 @@ var _ = ginkgo.Describe("OVN NetworkPolicy Low-Level Operations", func() {
 		}
 		asMatch := asMatch(hashedASNames)
 		match := fmt.Sprintf("ip4.src == {%s} && outport == @%s", asMatch, pgName)
-		acl := libovsdbops.BuildACL(libovsdbutil.GetACLName(aclIDs), nbdb.ACLDirectionToLport, types.DefaultAllowPriority, match,
+		acl := ovnops.BuildACL(libovsdbutil.GetACLName(aclIDs), nbdb.ACLDirectionToLport, types.DefaultAllowPriority, match,
 			nbdb.ACLActionAllowRelated, types.OvnACLLoggingMeter, aclLogging.Allow, true, aclIDs.GetExternalIDs(), nil,
 			types.DefaultACLTier)
 		return acl
@@ -2290,7 +2291,7 @@ var _ = ginkgo.Describe("OVN NetworkPolicy Low-Level Operations", func() {
 		four := getNamespaceAddrSetDbIDs("ns4", controllerName)
 		five := getNamespaceAddrSetDbIDs("ns5", controllerName)
 		six := getNamespaceAddrSetDbIDs("ns6", controllerName)
-		for _, addrSetID := range []*libovsdbops.DbObjectIDs{one, two, three, four, five, six} {
+		for _, addrSetID := range []*ovsdbops.DbObjectIDs{one, two, three, four, five, six} {
 			_, err := asFactory.EnsureAddressSet(addrSetID)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
@@ -2299,91 +2300,91 @@ var _ = ginkgo.Describe("OVN NetworkPolicy Low-Level Operations", func() {
 			Deny:  nbdb.ACLSeverityInfo,
 		}
 
-		gomega.Expect(gp.addNamespaceAddressSet(one.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected := buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(one.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected := buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, one}, &defaultAclLogging)
 		actual, _ := gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.addNamespaceAddressSet(two.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(two.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, one, two}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// address sets should be alphabetized
-		gomega.Expect(gp.addNamespaceAddressSet(three.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(three.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, one, two, three}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// re-adding an existing set is a no-op
-		gomega.Expect(gp.addNamespaceAddressSet(three.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeFalse())
+		gomega.Expect(gp.addNamespaceAddressSet(three.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeFalse())
 
-		gomega.Expect(gp.addNamespaceAddressSet(four.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(four.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, one, two, three, four}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// now delete a set
-		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, two, three, four}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// deleting again is a no-op
-		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeFalse())
+		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeFalse())
 
 		// add and delete some more...
-		gomega.Expect(gp.addNamespaceAddressSet(five.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(five.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, two, three, four, five}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.delNamespaceAddressSet(three.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(three.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, two, four, five}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// deleting again is no-op
-		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeFalse())
+		gomega.Expect(gp.delNamespaceAddressSet(one.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeFalse())
 
-		gomega.Expect(gp.addNamespaceAddressSet(six.GetObjectID(libovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.addNamespaceAddressSet(six.GetObjectID(ovsdbops.ObjectNameKey), asFactory)).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, two, four, five, six}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.delNamespaceAddressSet(two.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(two.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, four, five, six}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.delNamespaceAddressSet(five.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(five.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, four, six}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.delNamespaceAddressSet(six.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(six.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs, four}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
-		gomega.Expect(gp.delNamespaceAddressSet(four.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeTrue())
-		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*libovsdbops.DbObjectIDs{
+		gomega.Expect(gp.delNamespaceAddressSet(four.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeTrue())
+		expected = buildExpectedIngressPeerNSv4ACL(gp, pgName, []*ovsdbops.DbObjectIDs{
 			asIDs}, &defaultAclLogging)
 		actual, _ = gp.buildLocalPodACLs(pgName, &defaultAclLogging)
 		gomega.Expect(actual).To(libovsdbtest.ConsistOfIgnoringUUIDs(expected))
 
 		// deleting again is no-op
-		gomega.Expect(gp.delNamespaceAddressSet(four.GetObjectID(libovsdbops.ObjectNameKey))).To(gomega.BeFalse())
+		gomega.Expect(gp.delNamespaceAddressSet(four.GetObjectID(ovsdbops.ObjectNameKey))).To(gomega.BeFalse())
 	})
 })

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	ops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +13,7 @@ type AddressSetIterFunc struct {
 }
 
 // Execute provides a mock function with given fields: dbIDs
-func (_m *AddressSetIterFunc) Execute(dbIDs *ops.DbObjectIDs) error {
+func (_m *AddressSetIterFunc) Execute(dbIDs *ovsdbops.DbObjectIDs) error {
 	ret := _m.Called(dbIDs)
 
 	if len(ret) == 0 {
@@ -21,7 +21,7 @@ func (_m *AddressSetIterFunc) Execute(dbIDs *ops.DbObjectIDs) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*ops.DbObjectIDs) error); ok {
+	if rf, ok := ret.Get(0).(func(*ovsdbops.DbObjectIDs) error); ok {
 		r0 = rf(dbIDs)
 	} else {
 		r0 = ret.Error(0)

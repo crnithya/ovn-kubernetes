@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 

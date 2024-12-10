@@ -6,7 +6,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -84,24 +85,24 @@ func (bnc *BaseNetworkController) getMulticastACLEgrMatch() string {
 	return getACLMatchAF(ipv4Match, ipv6Match, ipv4Mode, ipv6Mode)
 }
 
-func getDefaultMcastACLDbIDs(mcastType defaultMcastACLTypeID, aclDir libovsdbutil.ACLDirection, controller string) *libovsdbops.DbObjectIDs {
+func getDefaultMcastACLDbIDs(mcastType defaultMcastACLTypeID, aclDir libovsdbutil.ACLDirection, controller string) *ovsdbops.DbObjectIDs {
 	// there are 2 types of default multicast ACLs in every direction (Ingress/Egress)
 	// DefaultDeny = deny multicast by default
 	// AllowInterNode = allow inter-node multicast
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastCluster, controller,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.TypeKey:            string(mcastType),
-			libovsdbops.PolicyDirectionKey: string(aclDir),
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastCluster, controller,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.TypeKey:            string(mcastType),
+			ovsdbops.PolicyDirectionKey: string(aclDir),
 		})
 
 }
 
-func getNamespaceMcastACLDbIDs(ns string, aclDir libovsdbutil.ACLDirection, controller string) *libovsdbops.DbObjectIDs {
+func getNamespaceMcastACLDbIDs(ns string, aclDir libovsdbutil.ACLDirection, controller string) *ovsdbops.DbObjectIDs {
 	// namespaces ACL
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastNamespace, controller,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey:      ns,
-			libovsdbops.PolicyDirectionKey: string(aclDir),
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastNamespace, controller,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey:      ns,
+			ovsdbops.PolicyDirectionKey: string(aclDir),
 		})
 }
 
@@ -128,17 +129,17 @@ func (bnc *BaseNetworkController) createMulticastAllowPolicy(ns string, nsInfo *
 	ingressACL := libovsdbutil.BuildACL(dbIDs, types.DefaultMcastAllowPriority, ingressMatch, nbdb.ACLActionAllow, nil, aclPipeline)
 
 	acls := []*nbdb.ACL{egressACL, ingressACL}
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
+	ops, err := ovnops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
 	if err != nil {
 		return err
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(bnc.nbClient, ops, portGroupName, acls...)
+	ops, err = ovnops.AddACLsToPortGroupOps(bnc.nbClient, ops, portGroupName, acls...)
 	if err != nil {
 		return err
 	}
 
-	_, err = libovsdbops.TransactAndCheck(bnc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(bnc.nbClient, ops)
 	if err != nil {
 		return err
 	}
@@ -151,17 +152,17 @@ func (bnc *BaseNetworkController) deleteMulticastAllowPolicy(ns string) error {
 
 	// mcast acls have ACLMulticastNamespace owner
 	// searching by namespace will return ACLs in all existing directions.
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastNamespace, bnc.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: ns,
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastNamespace, bnc.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: ns,
 		})
-	mcastAclPred := libovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
-	mcastACLs, err := libovsdbops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
+	mcastAclPred := ovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
+	mcastACLs, err := ovnops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
 	if err != nil {
 		return fmt.Errorf("unable to find default multicast ACLs: %v", err)
 	}
 	// ACLs referenced by the port group will be deleted by db if there are no other references
-	err = libovsdbops.DeleteACLsFromPortGroups(bnc.nbClient, []string{portGroupName},
+	err = ovnops.DeleteACLsFromPortGroups(bnc.nbClient, []string{portGroupName},
 		mcastACLs...)
 	if err != nil {
 		return fmt.Errorf("unable to delete multicast acls for namespace %s: %w", ns, err)
@@ -189,12 +190,12 @@ func (bnc *BaseNetworkController) createDefaultDenyMulticastPolicy() error {
 		acl := libovsdbutil.BuildACL(dbIDs, types.DefaultMcastDenyPriority, match, nbdb.ACLActionDrop, nil, aclPipeline)
 		acls = append(acls, acl)
 	}
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
+	ops, err := ovnops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
 	if err != nil {
 		return err
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(bnc.nbClient, ops, bnc.getClusterPortGroupName(types.ClusterPortGroupNameBase), acls...)
+	ops, err = ovnops.AddACLsToPortGroupOps(bnc.nbClient, ops, bnc.getClusterPortGroupName(types.ClusterPortGroupNameBase), acls...)
 	if err != nil {
 		return err
 	}
@@ -202,13 +203,13 @@ func (bnc *BaseNetworkController) createDefaultDenyMulticastPolicy() error {
 	if !bnc.IsSecondary() {
 		// Remove old multicastDefaultDeny port group now that all ports
 		// have been added to the clusterPortGroup by WatchPods()
-		ops, err = libovsdbops.DeletePortGroupsOps(bnc.nbClient, ops, legacyMulticastDefaultDenyPortGroup)
+		ops, err = ovnops.DeletePortGroupsOps(bnc.nbClient, ops, legacyMulticastDefaultDenyPortGroup)
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = libovsdbops.TransactAndCheck(bnc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(bnc.nbClient, ops)
 	if err != nil {
 		return err
 	}
@@ -232,17 +233,17 @@ func (bnc *BaseNetworkController) createDefaultAllowMulticastPolicy() error {
 		acls = append(acls, acl)
 	}
 
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
+	ops, err := ovnops.CreateOrUpdateACLsOps(bnc.nbClient, nil, bnc.GetSamplingConfig(), acls...)
 	if err != nil {
 		return err
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(bnc.nbClient, ops, bnc.getClusterPortGroupName(types.ClusterRtrPortGroupNameBase), acls...)
+	ops, err = ovnops.AddACLsToPortGroupOps(bnc.nbClient, ops, bnc.getClusterPortGroupName(types.ClusterRtrPortGroupNameBase), acls...)
 	if err != nil {
 		return err
 	}
 
-	_, err = libovsdbops.TransactAndCheck(bnc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(bnc.nbClient, ops)
 	if err != nil {
 		return err
 	}
@@ -252,13 +253,13 @@ func (bnc *BaseNetworkController) createDefaultAllowMulticastPolicy() error {
 
 func (bnc *BaseNetworkController) disableMulticast() error {
 	// default mcast acls have ACLMulticastCluster type
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastCluster, bnc.controllerName, nil)
-	mcastAclPred := libovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
-	mcastACLs, err := libovsdbops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastCluster, bnc.controllerName, nil)
+	mcastAclPred := ovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
+	mcastACLs, err := ovnops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
 	if err != nil {
 		return fmt.Errorf("unable to find default multicast ACLs: %v", err)
 	}
-	err = libovsdbops.DeleteACLsFromPortGroups(bnc.nbClient, []string{
+	err = ovnops.DeleteACLsFromPortGroups(bnc.nbClient, []string{
 		bnc.getClusterPortGroupName(types.ClusterRtrPortGroupNameBase),
 		bnc.getClusterPortGroupName(types.ClusterPortGroupNameBase)},
 		mcastACLs...)
@@ -277,9 +278,9 @@ func (bnc *BaseNetworkController) disableMulticast() error {
 // or have multicast disabled
 func (bnc *BaseNetworkController) syncNsMulticast(k8sNamespaces map[string]bool) error {
 	// to find namespaces that have multicast enabled, we need to find namespace-owned port groups with multicast acls.
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastNamespace, bnc.controllerName, nil)
-	mcastAclPred := libovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
-	mcastACLs, err := libovsdbops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastNamespace, bnc.controllerName, nil)
+	mcastAclPred := ovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
+	mcastACLs, err := ovnops.FindACLsWithPredicate(bnc.nbClient, mcastAclPred)
 	if err != nil {
 		return fmt.Errorf("unable to find multicast ACLs for namespaces: %v", err)
 	}
@@ -293,13 +294,13 @@ func (bnc *BaseNetworkController) syncNsMulticast(k8sNamespaces map[string]bool)
 	}
 	staleNamespaces := []string{}
 
-	pgPredIDs := libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNamespace, bnc.controllerName, nil)
-	pgPred := libovsdbops.GetPredicate[*nbdb.PortGroup](pgPredIDs, func(item *nbdb.PortGroup) bool {
+	pgPredIDs := ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNamespace, bnc.controllerName, nil)
+	pgPred := ovsdbops.GetPredicate[*nbdb.PortGroup](pgPredIDs, func(item *nbdb.PortGroup) bool {
 		for _, aclUUID := range item.ACLs {
 			if mcastAclUUIDs.Has(aclUUID) {
 				// multicast is enabled on this port group.
 				// add namespace to the stale list if namespace is not present in k8sNamespaces
-				namespaceName := item.ExternalIDs[libovsdbops.ObjectNameKey.String()]
+				namespaceName := item.ExternalIDs[ovsdbops.ObjectNameKey.String()]
 				if !k8sNamespaces[namespaceName] {
 					staleNamespaces = append(staleNamespaces, namespaceName)
 				}
@@ -308,7 +309,7 @@ func (bnc *BaseNetworkController) syncNsMulticast(k8sNamespaces map[string]bool)
 		return false
 	})
 
-	_, err = libovsdbops.FindPortGroupsWithPredicate(bnc.nbClient, pgPred)
+	_, err = ovnops.FindPortGroupsWithPredicate(bnc.nbClient, pgPred)
 	if err != nil {
 		return fmt.Errorf("unable to find multicast port groups: %v", err)
 	}

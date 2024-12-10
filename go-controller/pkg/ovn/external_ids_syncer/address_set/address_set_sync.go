@@ -10,7 +10,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util/batching"
@@ -99,65 +100,65 @@ func checkIfNetpol(asName string) (netpolOwned bool, namespace, name, direction,
 	return
 }
 
-func (syncer *AddressSetsSyncer) getEgressIPAddrSetDbIDs(name, network string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressIP, syncer.controllerName, map[libovsdbops.ExternalIDKey]string{
+func (syncer *AddressSetsSyncer) getEgressIPAddrSetDbIDs(name, network string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressIP, syncer.controllerName, map[ovsdbops.ExternalIDKey]string{
 		// egress ip creates cluster-wide address sets with egressIpAddrSetName
-		libovsdbops.ObjectNameKey: name,
-		libovsdbops.NetworkKey:    network,
+		ovsdbops.ObjectNameKey: name,
+		ovsdbops.NetworkKey:    network,
 	})
 }
 
-func (syncer *AddressSetsSyncer) getEgressServiceAddrSetDbIDs() *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressService, syncer.controllerName, map[libovsdbops.ExternalIDKey]string{
+func (syncer *AddressSetsSyncer) getEgressServiceAddrSetDbIDs() *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressService, syncer.controllerName, map[ovsdbops.ExternalIDKey]string{
 		// egressService has 1 cluster-wide address set
-		libovsdbops.ObjectNameKey: egressServiceServedPodsAddrSetName,
+		ovsdbops.ObjectNameKey: egressServiceServedPodsAddrSetName,
 	})
 }
 
-func (syncer *AddressSetsSyncer) getHybridRouteAddrSetDbIDs(nodeName string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetHybridNodeRoute, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
+func (syncer *AddressSetsSyncer) getHybridRouteAddrSetDbIDs(nodeName string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetHybridNodeRoute, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
 			// there is only 1 address set of this type per node
-			libovsdbops.ObjectNameKey: nodeName,
+			ovsdbops.ObjectNameKey: nodeName,
 		})
 }
 
-func (syncer *AddressSetsSyncer) getEgressQosAddrSetDbIDs(namespace, priority string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressQoS, syncer.controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: namespace,
+func (syncer *AddressSetsSyncer) getEgressQosAddrSetDbIDs(namespace, priority string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressQoS, syncer.controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: namespace,
 		// priority is the unique id for address set within given namespace
-		libovsdbops.PriorityKey: priority,
+		ovsdbops.PriorityKey: priority,
 	})
 }
 
-func (syncer *AddressSetsSyncer) getNetpolAddrSetDbIDs(policyNamespace, policyName, direction, idx string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNetworkPolicy, syncer.controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: policyNamespace + "_" + policyName,
+func (syncer *AddressSetsSyncer) getNetpolAddrSetDbIDs(policyNamespace, policyName, direction, idx string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNetworkPolicy, syncer.controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: policyNamespace + "_" + policyName,
 		// direction and idx uniquely identify address set (= gress policy rule)
-		libovsdbops.PolicyDirectionKey: direction,
-		libovsdbops.GressIdxKey:        idx,
+		ovsdbops.PolicyDirectionKey: direction,
+		ovsdbops.GressIdxKey:        idx,
 	})
 }
 
-func (syncer *AddressSetsSyncer) getEgressFirewallDNSAddrSetDbIDs(dnsName string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressFirewallDNS, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
+func (syncer *AddressSetsSyncer) getEgressFirewallDNSAddrSetDbIDs(dnsName string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressFirewallDNS, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
 			// dns address sets are cluster-wide objects, they have unique names
-			libovsdbops.ObjectNameKey: dnsName,
+			ovsdbops.ObjectNameKey: dnsName,
 		})
 }
 
-func (syncer *AddressSetsSyncer) getNamespaceAddrSetDbIDs(namespaceName string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, syncer.controllerName, map[libovsdbops.ExternalIDKey]string{
+func (syncer *AddressSetsSyncer) getNamespaceAddrSetDbIDs(namespaceName string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, syncer.controllerName, map[ovsdbops.ExternalIDKey]string{
 		// namespace has only 1 address set, no additional ids are required
-		libovsdbops.ObjectNameKey: namespaceName,
+		ovsdbops.ObjectNameKey: namespaceName,
 	})
 }
 
-func buildNewAddressSet(dbIDs *libovsdbops.DbObjectIDs, ipFamily string) *nbdb.AddressSet {
-	dbIDsWithIPFam := dbIDs.AddIDs(map[libovsdbops.ExternalIDKey]string{libovsdbops.IPFamilyKey: ipFamily})
+func buildNewAddressSet(dbIDs *ovsdbops.DbObjectIDs, ipFamily string) *nbdb.AddressSet {
+	dbIDsWithIPFam := dbIDs.AddIDs(map[ovsdbops.ExternalIDKey]string{ovsdbops.IPFamilyKey: ipFamily})
 	externalIDs := dbIDsWithIPFam.GetExternalIDs()
-	name := externalIDs[libovsdbops.PrimaryIDKey.String()]
+	name := externalIDs[ovsdbops.PrimaryIDKey.String()]
 	as := &nbdb.AddressSet{
 		Name:        util.HashForOVN(name),
 		ExternalIDs: externalIDs,
@@ -168,12 +169,12 @@ func buildNewAddressSet(dbIDs *libovsdbops.DbObjectIDs, ipFamily string) *nbdb.A
 // getReferencingObjsAndNewDbIDs finds all object that reference stale address set and tries to create a new dbIDs
 // based on referencing objects
 func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName string) (acls []*nbdb.ACL,
-	qoses []*nbdb.QoS, lrps []*nbdb.LogicalRouterPolicy, dbIDs *libovsdbops.DbObjectIDs, err error) {
+	qoses []*nbdb.QoS, lrps []*nbdb.LogicalRouterPolicy, dbIDs *ovsdbops.DbObjectIDs, err error) {
 	// find all referencing objects
 	aclPred := func(acl *nbdb.ACL) bool {
 		return strings.Contains(acl.Match, "$"+oldHash)
 	}
-	acls, err = libovsdbops.FindACLsWithPredicate(syncer.nbClient, aclPred)
+	acls, err = ovnops.FindACLsWithPredicate(syncer.nbClient, aclPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find acls for address set %s: %v", oldHash, err)
 		return
@@ -181,7 +182,7 @@ func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName 
 	qosPred := func(qos *nbdb.QoS) bool {
 		return strings.Contains(qos.Match, "$"+oldHash)
 	}
-	qoses, err = libovsdbops.FindQoSesWithPredicate(syncer.nbClient, qosPred)
+	qoses, err = ovnops.FindQoSesWithPredicate(syncer.nbClient, qosPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find qoses for address set %s: %v", oldHash, err)
 		return
@@ -189,7 +190,7 @@ func (syncer *AddressSetsSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName 
 	lrpPred := func(lrp *nbdb.LogicalRouterPolicy) bool {
 		return strings.Contains(lrp.Match, "$"+oldHash)
 	}
-	lrps, err = libovsdbops.FindLogicalRouterPoliciesWithPredicate(syncer.nbClient, lrpPred)
+	lrps, err = ovnops.FindLogicalRouterPoliciesWithPredicate(syncer.nbClient, lrpPred)
 	if err != nil {
 		err = fmt.Errorf("failed to find lrps for address set %s: %v", oldHash, err)
 		return
@@ -260,7 +261,7 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 			// new address set wasn't built
 			if len(addrSetInfo.acls) == 0 && len(addrSetInfo.qoses) == 0 && len(addrSetInfo.lrps) == 0 {
 				// address set is stale and not referenced, clean up
-				ops, err = libovsdbops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
+				ops, err = ovnops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
 			} else {
 				syncer.ignoredAddressSets += 1
 			}
@@ -269,12 +270,12 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 
 		oldName := addrSetInfo.oldAddrSet.ExternalIDs["name"]
 		// create updated address set
-		ops, err = libovsdbops.CreateOrUpdateAddressSetsOps(syncer.nbClient, ops, addrSetInfo.newAddrSet)
+		ops, err = ovnops.CreateOrUpdateAddressSetsOps(syncer.nbClient, ops, addrSetInfo.newAddrSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update address set ops for address set %s: %v", oldName, err)
 		}
 		// delete old address set
-		ops, err = libovsdbops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
+		ops, err = ovnops.DeleteAddressSetsOps(syncer.nbClient, ops, addrSetInfo.oldAddrSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update address set ops for address set %s: %v", oldName, err)
 		}
@@ -304,19 +305,19 @@ func (syncer *AddressSetsSyncer) getUpdateAddrSetOps(addrSetsInfo []*updateAddrS
 	}
 
 	for _, acl := range aclsToUpdate {
-		ops, err = libovsdbops.UpdateACLsOps(syncer.nbClient, ops, acl)
+		ops, err = ovnops.UpdateACLsOps(syncer.nbClient, ops, acl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update acl ops: %v", err)
 		}
 	}
 	for _, qos := range qosesToUpdate {
-		ops, err = libovsdbops.UpdateQoSesOps(syncer.nbClient, ops, qos)
+		ops, err = ovnops.UpdateQoSesOps(syncer.nbClient, ops, qos)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update qos ops: %v", err)
 		}
 	}
 	for _, lrp := range lrpsToUpdate {
-		ops, err = libovsdbops.UpdateLogicalRouterPoliciesOps(syncer.nbClient, ops, lrp)
+		ops, err = ovnops.UpdateLogicalRouterPoliciesOps(syncer.nbClient, ops, lrp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update LRPs ops: %v", err)
 		}
@@ -367,8 +368,8 @@ func (syncer *AddressSetsSyncer) getAddrSetUpdateInfo(as *nbdb.AddressSet) (*upd
 
 func (syncer *AddressSetsSyncer) SyncAddressSets() error {
 	// stale address sets don't have controller ID
-	p := libovsdbops.GetNoOwnerPredicate[*nbdb.AddressSet]()
-	addrSetList, err := libovsdbops.FindAddressSetsWithPredicate(syncer.nbClient, p)
+	p := ovsdbops.GetNoOwnerPredicate[*nbdb.AddressSet]()
+	addrSetList, err := ovnops.FindAddressSetsWithPredicate(syncer.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("failed to find stale address sets: %v", err)
 	}
@@ -387,7 +388,7 @@ func (syncer *AddressSetsSyncer) SyncAddressSets() error {
 		if err != nil {
 			return fmt.Errorf("failed to get update address sets ops: %w", err)
 		}
-		_, err = libovsdbops.TransactAndCheck(syncer.nbClient, ops)
+		_, err = ovsdbops.TransactAndCheck(syncer.nbClient, ops)
 		if err != nil {
 			return fmt.Errorf("failed to transact address set sync ops: %v", err)
 		}

@@ -13,7 +13,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -177,7 +178,7 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 		mapLBDifferenceByKey(removeLBsFromGroups, existingGroups, wantGroups, blb)
 	}
 
-	ops, err := libovsdbops.CreateOrUpdateLoadBalancersOps(nbClient, nil, toNBLoadBalancerList(tlbs)...)
+	ops, err := ovnops.CreateOrUpdateLoadBalancersOps(nbClient, nil, toNBLoadBalancerList(tlbs)...)
 	if err != nil {
 		return err
 	}
@@ -200,14 +201,14 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 		return lswitch
 	}
 	for k, v := range addLBsToSwitch {
-		ops, err = libovsdbops.AddLoadBalancersToLogicalSwitchOps(nbClient, ops, getSwitch(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.AddLoadBalancersToLogicalSwitchOps(nbClient, ops, getSwitch(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for adding load balancers to switch %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
 		}
 	}
 	for k, v := range removeLBsFromSwitch {
-		ops, err = libovsdbops.RemoveLoadBalancersFromLogicalSwitchOps(nbClient, ops, getSwitch(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.RemoveLoadBalancersFromLogicalSwitchOps(nbClient, ops, getSwitch(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for removing load balancers from switch %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
@@ -226,14 +227,14 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 		return router
 	}
 	for k, v := range addLBsToRouter {
-		ops, err = libovsdbops.AddLoadBalancersToLogicalRouterOps(nbClient, ops, getRouter(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.AddLoadBalancersToLogicalRouterOps(nbClient, ops, getRouter(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for adding load balancers to router %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
 		}
 	}
 	for k, v := range removesLBsFromRouter {
-		ops, err = libovsdbops.RemoveLoadBalancersFromLogicalRouterOps(nbClient, ops, getRouter(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.RemoveLoadBalancersFromLogicalRouterOps(nbClient, ops, getRouter(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for removing load balancers from router %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
@@ -252,14 +253,14 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 		return group
 	}
 	for k, v := range addLBsToGroups {
-		ops, err = libovsdbops.AddLoadBalancersToGroupOps(nbClient, ops, getGroup(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.AddLoadBalancersToGroupOps(nbClient, ops, getGroup(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for adding load balancers to group %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
 		}
 	}
 	for k, v := range removeLBsFromGroups {
-		ops, err = libovsdbops.RemoveLoadBalancersFromGroupOps(nbClient, ops, getGroup(k), toNBLoadBalancerList(v)...)
+		ops, err = ovnops.RemoveLoadBalancersFromGroupOps(nbClient, ops, getGroup(k), toNBLoadBalancerList(v)...)
 		if err != nil {
 			return fmt.Errorf("failed to create ops for removing load balancers from group %s for service %s/%s: %w",
 				k, service.Namespace, service.Name, err)
@@ -272,7 +273,7 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 		deleteLBs = append(deleteLBs, &nbdb.LoadBalancer{UUID: clb.UUID})
 		deleteTemplates = append(deleteTemplates, clb.Templates)
 	}
-	ops, err = libovsdbops.DeleteLoadBalancersOps(nbClient, ops, deleteLBs...)
+	ops, err = ovnops.DeleteLoadBalancersOps(nbClient, ops, deleteLBs...)
 	if err != nil {
 		return fmt.Errorf("failed to create ops for removing %d load balancers for service %s/%s: %w",
 			len(deleteLBs), service.Namespace, service.Name, err)
@@ -290,7 +291,7 @@ func EnsureLBs(nbClient libovsdbclient.Client, service *corev1.Service, existing
 	}
 	ops = append(ops, recordOps...)
 
-	_, err = libovsdbops.TransactAndCheckAndSetUUIDs(nbClient, toNBLoadBalancerList(tlbs), ops)
+	_, err = ovsdbops.TransactAndCheckAndSetUUIDs(nbClient, toNBLoadBalancerList(tlbs), ops)
 	if err != nil {
 		return fmt.Errorf("failed to ensure load balancers for service %s/%s: %w", service.Namespace, service.Name, err)
 	}
@@ -387,7 +388,7 @@ func buildLB(lb *LB) *templateLoadBalancer {
 	}
 
 	return &templateLoadBalancer{
-		nbLB:      libovsdbops.BuildLoadBalancer(lb.Name, strings.ToLower(lb.Protocol), selectionFields, buildVipMap(lb.Rules), options, lb.ExternalIDs),
+		nbLB:      ovnops.BuildLoadBalancer(lb.Name, strings.ToLower(lb.Protocol), selectionFields, buildVipMap(lb.Rules), options, lb.ExternalIDs),
 		templates: lb.Templates,
 	}
 }
@@ -418,7 +419,7 @@ func DeleteLBs(nbClient libovsdbclient.Client, uuids []string) error {
 		lbs = append(lbs, &nbdb.LoadBalancer{UUID: uuid})
 	}
 
-	err := libovsdbops.DeleteLoadBalancers(nbClient, lbs)
+	err := ovnops.DeleteLoadBalancers(nbClient, lbs)
 	if err != nil {
 		return err
 	}
@@ -465,7 +466,7 @@ func _getLBsCommon(nbClient libovsdbclient.Client, allTemplates TemplateMap, wit
 		return includeAllNetworks || belongsToThisNetwork(item.ExternalIDs)
 	}
 
-	lbs, err := libovsdbops.FindLoadBalancersWithPredicate(nbClient, p)
+	lbs, err := ovnops.FindLoadBalancersWithPredicate(nbClient, p)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not list load_balancer: %w", err)
 	}
@@ -512,7 +513,7 @@ func _getLBsCommon(nbClient libovsdbclient.Client, allTemplates TemplateMap, wit
 		return len(item.LoadBalancer) > 0 && (includeAllNetworks || belongsToThisNetwork(item.ExternalIDs))
 	}
 
-	switches, err := libovsdbops.FindLogicalSwitchesWithPredicate(nbClient, ps)
+	switches, err := ovnops.FindLogicalSwitchesWithPredicate(nbClient, ps)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not list logical switches: %w", err)
 	}
@@ -528,7 +529,7 @@ func _getLBsCommon(nbClient libovsdbclient.Client, allTemplates TemplateMap, wit
 	pr := func(item *nbdb.LogicalRouter) bool {
 		return len(item.LoadBalancer) > 0 && (includeAllNetworks || belongsToThisNetwork(item.ExternalIDs))
 	}
-	routers, err := libovsdbops.FindLogicalRoutersWithPredicate(nbClient, pr)
+	routers, err := ovnops.FindLogicalRoutersWithPredicate(nbClient, pr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not list logical routers: %w", err)
 	}
@@ -573,7 +574,7 @@ func _getLBsCommon(nbClient libovsdbclient.Client, allTemplates TemplateMap, wit
 		return strings.HasPrefix(item.Name, netInfo.GetNetworkName())
 	}
 
-	groups, err := libovsdbops.FindLoadBalancerGroupsWithPredicate(nbClient, pg)
+	groups, err := ovnops.FindLoadBalancerGroupsWithPredicate(nbClient, pg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not list load balancer groups: %w", err)
 	}

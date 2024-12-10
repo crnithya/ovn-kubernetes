@@ -21,7 +21,7 @@ import (
 	anpfake "sigs.k8s.io/network-policy-api/pkg/client/clientset/versioned/fake"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -106,18 +106,18 @@ func getANPGressACL(action, anpName, direction string, rulePriority int32,
 		acl.Tier = types.DefaultBANPACLTier
 	}
 	acl.ExternalIDs = map[string]string{
-		libovsdbops.OwnerControllerKey.String():    DefaultNetworkControllerName,
-		libovsdbops.ObjectNameKey.String():         anpName,
-		libovsdbops.GressIdxKey.String():           fmt.Sprintf("%d", ruleIndex),
-		libovsdbops.PolicyDirectionKey.String():    direction,
-		libovsdbops.PortPolicyProtocolKey.String(): "None",
-		libovsdbops.OwnerTypeKey.String():          "AdminNetworkPolicy",
-		libovsdbops.PrimaryIDKey.String():          fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:None", DefaultNetworkControllerName, anpName, direction, ruleIndex),
+		ovsdbops.OwnerControllerKey.String():    DefaultNetworkControllerName,
+		ovsdbops.ObjectNameKey.String():         anpName,
+		ovsdbops.GressIdxKey.String():           fmt.Sprintf("%d", ruleIndex),
+		ovsdbops.PolicyDirectionKey.String():    direction,
+		ovsdbops.PortPolicyProtocolKey.String(): "None",
+		ovsdbops.OwnerTypeKey.String():          "AdminNetworkPolicy",
+		ovsdbops.PrimaryIDKey.String():          fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:None", DefaultNetworkControllerName, anpName, direction, ruleIndex),
 	}
 	acl.Name = ptr.To(fmt.Sprintf("ANP:%s:%s:%d", anpName, direction, ruleIndex)) // tests logic for GetACLName
 	if banp {
-		acl.ExternalIDs[libovsdbops.OwnerTypeKey.String()] = "BaselineAdminNetworkPolicy"
-		acl.ExternalIDs[libovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:None",
+		acl.ExternalIDs[ovsdbops.OwnerTypeKey.String()] = "BaselineAdminNetworkPolicy"
+		acl.ExternalIDs[ovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:None",
 			DefaultNetworkControllerName, anpName, direction, ruleIndex)
 		acl.Name = ptr.To(fmt.Sprintf("BANP:%s:%s:%d", anpName, direction, ruleIndex)) // tests logic for GetACLName
 	}
@@ -178,12 +178,12 @@ func getANPGressACL(action, anpName, direction string, rulePriority int32,
 		} else {
 			match = fmt.Sprintf("%s && %s && %s", lPortMatch, l3Match, l4Match)
 		}
-		aclCopy.ExternalIDs[libovsdbops.PortPolicyProtocolKey.String()] = protocol
+		aclCopy.ExternalIDs[ovsdbops.PortPolicyProtocolKey.String()] = protocol
 		aclCopy.Match = match
-		aclCopy.ExternalIDs[libovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:%s",
+		aclCopy.ExternalIDs[ovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:%s",
 			DefaultNetworkControllerName, anpName, direction, ruleIndex, protocol)
 		if banp {
-			aclCopy.ExternalIDs[libovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:%s",
+			aclCopy.ExternalIDs[ovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:%s",
 				DefaultNetworkControllerName, anpName, direction, ruleIndex, protocol)
 		}
 		aclCopy.UUID = fmt.Sprintf("%s_%s_%d.%s-%f-UUID", anpName, direction, ruleIndex, protocol, rand.Float64())
@@ -201,12 +201,12 @@ func getANPGressACL(action, anpName, direction string, rulePriority int32,
 		} else {
 			match = fmt.Sprintf("%s && %s", lPortMatch, l3l4Match)
 		}
-		aclCopy.ExternalIDs[libovsdbops.PortPolicyProtocolKey.String()] = protocol + "-namedPort"
+		aclCopy.ExternalIDs[ovsdbops.PortPolicyProtocolKey.String()] = protocol + "-namedPort"
 		aclCopy.Match = match
-		aclCopy.ExternalIDs[libovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:%s",
+		aclCopy.ExternalIDs[ovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:AdminNetworkPolicy:%s:%s:%d:%s",
 			DefaultNetworkControllerName, anpName, direction, ruleIndex, protocol+"-namedPort")
 		if banp {
-			aclCopy.ExternalIDs[libovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:%s",
+			aclCopy.ExternalIDs[ovsdbops.PrimaryIDKey.String()] = fmt.Sprintf("%s:BaselineAdminNetworkPolicy:%s:%s:%d:%s",
 				DefaultNetworkControllerName, anpName, direction, ruleIndex, protocol+"-namedPort")
 		}
 		retACLs = append(retACLs, &aclCopy)

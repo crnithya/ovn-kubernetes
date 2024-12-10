@@ -14,7 +14,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -131,7 +132,7 @@ func (r *repair) runBeforeSync(useTemplates bool, netInfo util.NetInfo, nodes ma
 	klog.V(2).Infof("Deleted %d stale service LBs", len(staleLBs))
 
 	// Delete those stale template vars
-	if err := libovsdbops.DeleteAllChassisTemplateVarVariables(r.nbClient, staleTemplateNames.UnsortedList()); err != nil {
+	if err := ovnops.DeleteAllChassisTemplateVarVariables(r.nbClient, staleTemplateNames.UnsortedList()); err != nil {
 		klog.Errorf("Failed to delete stale Chassis Template Vars: %v", err)
 	}
 	klog.V(2).Infof("Deleted %d stale Chassis Template Vars", len(staleTemplateNames))
@@ -141,14 +142,14 @@ func (r *repair) runBeforeSync(useTemplates bool, netInfo util.NetInfo, nodes ma
 	p := func(item *nbdb.ACL) bool {
 		return item.Action == nbdb.ACLActionReject
 	}
-	acls, err := libovsdbops.FindACLsWithPredicate(r.nbClient, p)
+	acls, err := ovnops.FindACLsWithPredicate(r.nbClient, p)
 	if err != nil {
 		klog.Errorf("Error while finding reject ACLs error: %v", err)
 	}
 
 	if len(acls) > 0 {
 		p := func(_ *nbdb.LogicalSwitch) bool { return true }
-		err = libovsdbops.RemoveACLsFromLogicalSwitchesWithPredicate(r.nbClient, p, acls...)
+		err = ovnops.RemoveACLsFromLogicalSwitchesWithPredicate(r.nbClient, p, acls...)
 		if err != nil {
 			klog.Errorf("Failed to purge existing reject rules: %v", err)
 		}
@@ -176,16 +177,16 @@ func (r *repair) runBeforeSync(useTemplates bool, netInfo util.NetInfo, nodes ma
 		var ops []ovsdb.Operation
 		if netInfo.TopologyType() == types.Layer2Topology {
 			for _, node := range nodes {
-				if ops, err = libovsdbops.DeleteLogicalRouterStaticRoutesWithPredicateOps(r.nbClient, ops, netInfo.GetNetworkScopedGWRouterName(node.name), udnDelPredicate); err != nil {
+				if ops, err = ovnops.DeleteLogicalRouterStaticRoutesWithPredicateOps(r.nbClient, ops, netInfo.GetNetworkScopedGWRouterName(node.name), udnDelPredicate); err != nil {
 					klog.Errorf("Failed to create a delete logical router static route op: %v", err)
 				}
 			}
 		} else {
-			if ops, err = libovsdbops.DeleteLogicalRouterStaticRoutesWithPredicateOps(r.nbClient, ops, netInfo.GetNetworkScopedClusterRouterName(), udnDelPredicate); err != nil {
+			if ops, err = ovnops.DeleteLogicalRouterStaticRoutesWithPredicateOps(r.nbClient, ops, netInfo.GetNetworkScopedClusterRouterName(), udnDelPredicate); err != nil {
 				klog.Errorf("Failed to create a delete logical router static route op: %v", err)
 			}
 		}
-		if _, err = libovsdbops.TransactAndCheck(r.nbClient, ops); err != nil {
+		if _, err = ovsdbops.TransactAndCheck(r.nbClient, ops); err != nil {
 			klog.Errorf("Failed to delete logical router static routes: %v", err)
 		}
 	}

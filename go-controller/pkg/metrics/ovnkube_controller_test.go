@@ -15,7 +15,8 @@ import (
 	"github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics/mocks"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -42,14 +43,14 @@ func getKubeClient(nodeCount int) *kube.Kube {
 
 func setHvCfg(nbClient client.Client, hvCfg int, hvCfgTimestamp time.Time) {
 	nbGlobal := nbdb.NBGlobal{}
-	nbGlobalResp, err := libovsdbops.GetNBGlobal(nbClient, &nbGlobal)
+	nbGlobalResp, err := ovnops.GetNBGlobal(nbClient, &nbGlobal)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	nbGlobalResp.HvCfg = hvCfg
 	nbGlobalResp.HvCfgTimestamp = int(hvCfgTimestamp.UnixMilli())
 	ops, err := nbClient.Where(nbGlobalResp).Update(nbGlobalResp, &nbGlobalResp.HvCfg, &nbGlobalResp.HvCfgTimestamp)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	gomega.Expect(ops).To(gomega.HaveLen(1))
-	_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
@@ -113,7 +114,7 @@ var _ = ginkgo.Describe("Config Duration Operations", func() {
 			ops, txOkCallback, startOVNTimestamp, err := instance.AddOVN(nbClient, "pod", testNamespaceA, testPodNameA)
 			gomega.Expect(ops).Should(gomega.HaveLen(1))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			txOkCallback()
 			endTimestamp := instance.End("pod", testNamespaceA, testPodNameA)
@@ -144,7 +145,7 @@ var _ = ginkgo.Describe("Config Duration Operations", func() {
 			ops, txOkCallback, startOVNTimestamp, err := instance.AddOVN(nbClient, "pod", testNamespaceA, testPodNameA)
 			gomega.Expect(ops).Should(gomega.HaveLen(1))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			txOkCallback()
 			endTimestamp := instance.End("pod", testNamespaceA, testPodNameA)
@@ -158,7 +159,7 @@ var _ = ginkgo.Describe("Config Duration Operations", func() {
 			ops, txOkCallback, startOVNTimestamp, err = instance.AddOVN(nbClient, "networkpolicy", testNamespaceB, testPodNameB)
 			gomega.Expect(ops).Should(gomega.HaveLen(1))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			txOkCallback()
 			endTimestamp = instance.End("networkpolicy", testNamespaceB, testPodNameB)
@@ -203,14 +204,14 @@ var _ = ginkgo.Describe("Config Duration Operations", func() {
 			ops, txOkCallback, firstStartOVNTimestamp, err := instance.AddOVN(nbClient, "pod", testNamespaceA, testPodNameA)
 			gomega.Expect(ops).Should(gomega.HaveLen(1))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			txOkCallback()
 			// second addOVN
 			ops, txOkCallback, secondStartOVNTimestamp, err := instance.AddOVN(nbClient, "pod", testNamespaceA, testPodNameA)
 			gomega.Expect(ops).Should(gomega.HaveLen(1))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+			_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			txOkCallback()
 			endTimestamp := instance.End("pod", testNamespaceA, testPodNameA)

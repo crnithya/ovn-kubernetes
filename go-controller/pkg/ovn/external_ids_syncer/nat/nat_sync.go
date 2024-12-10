@@ -10,7 +10,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -71,11 +72,11 @@ func (n *NATSyncer) syncEgressIPNATs() error {
 	if err != nil {
 		return fmt.Errorf("failed to build pod cache: %v", err)
 	}
-	noOwnerFn := libovsdbops.GetNoOwnerPredicate[*nbdb.NAT]()
+	noOwnerFn := ovsdbops.GetNoOwnerPredicate[*nbdb.NAT]()
 	p := func(item *nbdb.NAT) bool {
 		return noOwnerFn(item) && item.ExternalIDs[legacyEIPNameExtIDKey] != "" && item.Type == nbdb.NATTypeSNAT && item.LogicalIP != ""
 	}
-	nats, err := libovsdbops.FindNATsWithPredicate(n.nbClient, p)
+	nats, err := ovnops.FindNATsWithPredicate(n.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve OVN NATs: %v", err)
 	}
@@ -107,14 +108,14 @@ func (n *NATSyncer) syncEgressIPNATs() error {
 			continue
 		}
 		nat.ExternalIDs = getEgressIPNATDbIDs(eIPName, pod.namespace, pod.name, ipFamily, n.controllerName).GetExternalIDs()
-		ops, err = libovsdbops.UpdateNATOps(n.nbClient, ops, nat)
+		ops, err = ovnops.UpdateNATOps(n.nbClient, ops, nat)
 		if err != nil {
 			klog.Errorf("Failed to generate NAT ops for NAT %s: %v", nat.UUID, err)
 		}
 		klog.Infof("## martin found %d nats", len(ops))
 	}
 
-	_, err = libovsdbops.TransactAndCheck(n.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(n.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("failed to transact pod to node subnet sync ops: %v", err)
 	}
@@ -125,7 +126,7 @@ func (n *NATSyncer) buildPodCache() (podsNetInfo, podsNetInfo, error) {
 	p := func(item *nbdb.LogicalSwitchPort) bool {
 		return item.ExternalIDs["pod"] == "true" && item.ExternalIDs[ovntypes.NADExternalID] == "" // ignore secondary network LSPs
 	}
-	lsps, err := libovsdbops.FindLogicalSwitchPortWithPredicate(n.nbClient, p)
+	lsps, err := ovnops.FindLogicalSwitchPortWithPredicate(n.nbClient, p)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get logical switch ports: %v", err)
 	}
@@ -170,9 +171,9 @@ func (n *NATSyncer) buildPodCache() (podsNetInfo, podsNetInfo, error) {
 }
 
 // getEgressIPNATDbIDs is copied from ovn pkg to avoid dependency
-func getEgressIPNATDbIDs(eIPName, podNamespace, podName string, ipFamily egressIPFamilyValue, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.NATEgressIP, controller, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: fmt.Sprintf("%s_%s/%s", eIPName, podNamespace, podName),
-		libovsdbops.IPFamilyKey:   string(ipFamily),
+func getEgressIPNATDbIDs(eIPName, podNamespace, podName string, ipFamily egressIPFamilyValue, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.NATEgressIP, controller, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: fmt.Sprintf("%s_%s/%s", eIPName, podNamespace, podName),
+		ovsdbops.IPFamilyKey:   string(ipFamily),
 	})
 }

@@ -6,7 +6,8 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 
@@ -36,24 +37,24 @@ var _ = Describe("Observability Manager", func() {
 	}
 
 	createACLWithPortGroup := func(acl *nbdb.ACL) *nbdb.PortGroup {
-		ops, err := libovsdbops.CreateOrUpdateACLsOps(nbClient, nil, manager.SamplingConfig(), acl)
+		ops, err := ovnops.CreateOrUpdateACLsOps(nbClient, nil, manager.SamplingConfig(), acl)
 		Expect(err).NotTo(HaveOccurred())
 		pg := &nbdb.PortGroup{
 			UUID: "pg-uuid",
 			ACLs: []string{acl.UUID},
 		}
-		ops, err = libovsdbops.CreateOrUpdatePortGroupsOps(nbClient, ops, pg)
+		ops, err = ovnops.CreateOrUpdatePortGroupsOps(nbClient, ops, pg)
 		Expect(err).NotTo(HaveOccurred())
-		_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+		_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 		Expect(err).NotTo(HaveOccurred())
 		return pg
 	}
 
 	// createOrUpdateACLPreserveUUID calls CreateOrUpdateACLs and sets the acl.UUID back.
 	// that is required as setting real UUID breaks libovsdb matching
-	createOrUpdateACLPreserveUUID := func(nbClient libovsdbclient.Client, samplingConfig *libovsdbops.SamplingConfig, acl *nbdb.ACL) error {
+	createOrUpdateACLPreserveUUID := func(nbClient libovsdbclient.Client, samplingConfig *ovnops.SamplingConfig, acl *nbdb.ACL) error {
 		namedUUID := acl.UUID
-		err := libovsdbops.CreateOrUpdateACLs(nbClient, samplingConfig, acl)
+		err := ovnops.CreateOrUpdateACLs(nbClient, samplingConfig, acl)
 		acl.UUID = namedUUID
 		return err
 	}
@@ -81,8 +82,7 @@ var _ = Describe("Observability Manager", func() {
 				SetID:       DefaultObservabilityCollectorSetID,
 				Probability: 65535,
 				ExternalIDs: map[string]string{
-					collectorFeaturesExternalID: strings.Join([]string{libovsdbops.AdminNetworkPolicySample, libovsdbops.EgressFirewallSample,
-						libovsdbops.MulticastSample, libovsdbops.NetworkPolicySample, libovsdbops.UDNIsolationSample}, ","),
+					collectorFeaturesExternalID: strings.Join([]string{ovnops.AdminNetworkPolicySample, ovnops.EgressFirewallSample, ovnops.MulticastSample, ovnops.NetworkPolicySample, ovnops.UDNIsolationSample}, ","),
 				},
 			},
 		}
@@ -125,14 +125,14 @@ var _ = Describe("Observability Manager", func() {
 					UUID: "acl-uuid",
 					ExternalIDs: map[string]string{
 						// NetworkPolicy is enabled by default
-						libovsdbops.OwnerTypeKey.String(): libovsdbops.NetworkPolicyOwnerType,
+						ovsdbops.OwnerTypeKey.String(): ovsdbops.NetworkPolicyOwnerType,
 					},
 				}
 				pg := createACLWithPortGroup(acl)
 
 				sample := &nbdb.Sample{
 					UUID:       "sample-uuid",
-					Metadata:   int(libovsdbops.GetACLSampleID(acl)),
+					Metadata:   int(ovnops.GetACLSampleID(acl)),
 					Collectors: []string{collectorUUID},
 				}
 				acl.SampleNew = &sample.UUID
@@ -146,7 +146,7 @@ var _ = Describe("Observability Manager", func() {
 					UUID: "acl-uuid",
 					ExternalIDs: map[string]string{
 						// disabled-feature doesn't exist => not enabled
-						libovsdbops.OwnerTypeKey.String(): "disabled-feature",
+						ovsdbops.OwnerTypeKey.String(): "disabled-feature",
 					},
 				}
 				pg := createACLWithPortGroup(acl)
@@ -162,7 +162,7 @@ var _ = Describe("Observability Manager", func() {
 			UUID: "acl-uuid",
 			ExternalIDs: map[string]string{
 				// NetworkPolicy is enabled by default
-				libovsdbops.OwnerTypeKey.String(): libovsdbops.NetworkPolicyOwnerType,
+				ovsdbops.OwnerTypeKey.String(): ovsdbops.NetworkPolicyOwnerType,
 			},
 		}
 		pg := &nbdb.PortGroup{
@@ -176,7 +176,7 @@ var _ = Describe("Observability Manager", func() {
 		// expect sample to be added to the existing acl
 		sample := &nbdb.Sample{
 			UUID:       "sample-uuid",
-			Metadata:   int(libovsdbops.GetACLSampleID(acl)),
+			Metadata:   int(ovnops.GetACLSampleID(acl)),
 			Collectors: []string{collectorUUID},
 		}
 		acl.SampleNew = &sample.UUID
@@ -190,7 +190,7 @@ var _ = Describe("Observability Manager", func() {
 			UUID: "acl-uuid",
 			ExternalIDs: map[string]string{
 				// disabled-feature doesn't exist => not enabled
-				libovsdbops.OwnerTypeKey.String(): "disabled-feature",
+				ovsdbops.OwnerTypeKey.String(): "disabled-feature",
 			},
 		}
 		pg := &nbdb.PortGroup{
@@ -199,7 +199,7 @@ var _ = Describe("Observability Manager", func() {
 		}
 		sample := &nbdb.Sample{
 			UUID:       "sample-uuid",
-			Metadata:   int(libovsdbops.GetACLSampleID(acl)),
+			Metadata:   int(ovnops.GetACLSampleID(acl)),
 			Collectors: []string{collectorUUID},
 		}
 		acl.SampleNew = &sample.UUID
@@ -222,16 +222,16 @@ var _ = Describe("Observability Manager", func() {
 			Action: nbdb.ACLActionAllowRelated,
 			ExternalIDs: map[string]string{
 				// NetworkPolicy is enabled by default
-				libovsdbops.OwnerTypeKey.String(): libovsdbops.NetworkPolicyOwnerType,
+				ovsdbops.OwnerTypeKey.String(): ovsdbops.NetworkPolicyOwnerType,
 			},
 		}
 		createACLWithPortGroup(acl)
 
 		// find sample by ACL and save sampleID
-		acls, err := libovsdbops.FindACLs(nbClient, []*nbdb.ACL{acl})
+		acls, err := ovnops.FindACLs(nbClient, []*nbdb.ACL{acl})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(acls).To(HaveLen(1))
-		sample, err := libovsdbops.GetSample(nbClient, &nbdb.Sample{
+		sample, err := ovnops.GetSample(nbClient, &nbdb.Sample{
 			UUID: *acls[0].SampleNew,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -243,10 +243,10 @@ var _ = Describe("Observability Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// find new sampleID
-		acls, err = libovsdbops.FindACLs(nbClient, []*nbdb.ACL{acl})
+		acls, err = ovnops.FindACLs(nbClient, []*nbdb.ACL{acl})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(acls).To(HaveLen(1))
-		sample, err = libovsdbops.GetSample(nbClient, &nbdb.Sample{
+		sample, err = ovnops.GetSample(nbClient, &nbdb.Sample{
 			UUID: *acls[0].SampleNew,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -270,11 +270,11 @@ var _ = Describe("Observability Manager", func() {
 			// tweakedConfig doesn't have EgressFirewall enabled, and sets different probability for NetworkPolicy
 			tweakedConfig := &collectorConfig{
 				collectorSetID: DefaultObservabilityCollectorSetID,
-				featuresProbability: map[libovsdbops.SampleFeature]int{
-					libovsdbops.NetworkPolicySample:      50,
-					libovsdbops.AdminNetworkPolicySample: 100,
-					libovsdbops.MulticastSample:          100,
-					libovsdbops.UDNIsolationSample:       100,
+				featuresProbability: map[ovnops.SampleFeature]int{
+					ovnops.NetworkPolicySample:      50,
+					ovnops.AdminNetworkPolicySample: 100,
+					ovnops.MulticastSample:          100,
+					ovnops.UDNIsolationSample:       100,
 				},
 			}
 			startManagerWithConfig(initialDB, tweakedConfig)
@@ -285,8 +285,7 @@ var _ = Describe("Observability Manager", func() {
 					SetID:       DefaultObservabilityCollectorSetID,
 					Probability: 65535,
 					ExternalIDs: map[string]string{
-						collectorFeaturesExternalID: strings.Join([]string{libovsdbops.AdminNetworkPolicySample,
-							libovsdbops.MulticastSample, libovsdbops.UDNIsolationSample}, ","),
+						collectorFeaturesExternalID: strings.Join([]string{ovnops.AdminNetworkPolicySample, ovnops.MulticastSample, ovnops.UDNIsolationSample}, ","),
 					},
 				},
 				&nbdb.SampleCollector{
@@ -295,7 +294,7 @@ var _ = Describe("Observability Manager", func() {
 					SetID:       DefaultObservabilityCollectorSetID,
 					Probability: 32767,
 					ExternalIDs: map[string]string{
-						collectorFeaturesExternalID: libovsdbops.NetworkPolicySample,
+						collectorFeaturesExternalID: ovnops.NetworkPolicySample,
 					},
 				},
 			)
@@ -305,8 +304,8 @@ var _ = Describe("Observability Manager", func() {
 			// tweakedConfig doesn't have probability used by existing collector
 			tweakedConfig := &collectorConfig{
 				collectorSetID: DefaultObservabilityCollectorSetID,
-				featuresProbability: map[libovsdbops.SampleFeature]int{
-					libovsdbops.NetworkPolicySample: 50,
+				featuresProbability: map[ovnops.SampleFeature]int{
+					ovnops.NetworkPolicySample: 50,
 				},
 			}
 
@@ -318,7 +317,7 @@ var _ = Describe("Observability Manager", func() {
 					SetID:       DefaultObservabilityCollectorSetID,
 					Probability: 32767,
 					ExternalIDs: map[string]string{
-						collectorFeaturesExternalID: libovsdbops.NetworkPolicySample,
+						collectorFeaturesExternalID: ovnops.NetworkPolicySample,
 					},
 				},
 			)
@@ -328,15 +327,15 @@ var _ = Describe("Observability Manager", func() {
 			// tweakedConfig doesn't have probability used by existing collector
 			tweakedConfig := &collectorConfig{
 				collectorSetID: DefaultObservabilityCollectorSetID,
-				featuresProbability: map[libovsdbops.SampleFeature]int{
-					libovsdbops.EgressFirewallSample: 50,
+				featuresProbability: map[ovnops.SampleFeature]int{
+					ovnops.EgressFirewallSample: 50,
 				},
 			}
 			acl := &nbdb.ACL{
 				UUID: "acl-uuid",
 				ExternalIDs: map[string]string{
 					// NetworkPolicy is enabled by default
-					libovsdbops.OwnerTypeKey.String(): libovsdbops.NetworkPolicyOwnerType,
+					ovsdbops.OwnerTypeKey.String(): ovsdbops.NetworkPolicyOwnerType,
 				},
 			}
 			pg := &nbdb.PortGroup{
@@ -345,7 +344,7 @@ var _ = Describe("Observability Manager", func() {
 			}
 			sample := &nbdb.Sample{
 				UUID:       "sample-uuid",
-				Metadata:   int(libovsdbops.GetACLSampleID(acl)),
+				Metadata:   int(ovnops.GetACLSampleID(acl)),
 				Collectors: []string{collectorUUID},
 			}
 			acl.SampleNew = &sample.UUID
@@ -359,7 +358,7 @@ var _ = Describe("Observability Manager", func() {
 				SetID:       DefaultObservabilityCollectorSetID,
 				Probability: 32767,
 				ExternalIDs: map[string]string{
-					collectorFeaturesExternalID: libovsdbops.EgressFirewallSample,
+					collectorFeaturesExternalID: ovnops.EgressFirewallSample,
 				},
 			}
 			// initial collector will fail to be cleaned up, since acl sample still references that collector

@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import (
 	"fmt"
@@ -511,8 +511,8 @@ const (
 	PortGroupExternalIDs
 )
 
-// getFieldsToUpdate gets a model and a list of ModelUpdateField and returns a list of their related interface{} fields.
-func getFieldsToUpdate(model model.Model, fieldNames []ModelUpdateField) []interface{} {
+// GetFieldsToUpdate gets a model and a list of ModelUpdateField and returns a list of their related interface{} fields.
+func GetFieldsToUpdate(model model.Model, fieldNames []ModelUpdateField) []interface{} {
 	var fields []interface{}
 	switch t := model.(type) {
 	case *nbdb.LogicalSwitchPort:
@@ -531,7 +531,7 @@ func getFieldsToUpdate(model model.Model, fieldNames []ModelUpdateField) []inter
 			case LogicalSwitchPortEnabled:
 				fields = append(fields, &t.Enabled)
 			default:
-				panic(fmt.Sprintf("getFieldsToUpdate: unknown or unsupported field %q for LogicalSwitchPort", field))
+				panic(fmt.Sprintf("GetFieldsToUpdate: unknown or unsupported field %q for LogicalSwitchPort", field))
 			}
 		}
 	case *nbdb.PortGroup:
@@ -544,24 +544,24 @@ func getFieldsToUpdate(model model.Model, fieldNames []ModelUpdateField) []inter
 			case PortGroupExternalIDs:
 				fields = append(fields, &t.ExternalIDs)
 			default:
-				panic(fmt.Sprintf("getFieldsToUpdate: unknown or unsupported field %q for PortGroup", field))
+				panic(fmt.Sprintf("GetFieldsToUpdate: unknown or unsupported field %q for PortGroup", field))
 			}
 		}
 	default:
-		panic(fmt.Sprintf("getFieldsToUpdate: unknown model type %T", t))
+		panic(fmt.Sprintf("GetFieldsToUpdate: unknown model type %T", t))
 	}
 	return fields
 }
 
-// getAllUpdatableFields returns a list of all of the columns/fields that can be updated for a model
-func getAllUpdatableFields(model model.Model) []interface{} {
+// GetAllUpdatableFields returns a list of all of the columns/fields that can be updated for a model
+func GetAllUpdatableFields(model model.Model) []interface{} {
 	switch t := model.(type) {
 	case *nbdb.LogicalSwitchPort:
 		return []interface{}{&t.Addresses, &t.Type, &t.TagRequest, &t.Options, &t.PortSecurity}
 	case *nbdb.PortGroup:
 		return []interface{}{&t.ACLs, &t.Ports, &t.ExternalIDs}
 	default:
-		panic(fmt.Sprintf("getAllUpdatableFields: unknown model %T", t))
+		panic(fmt.Sprintf("GetAllUpdatableFields: unknown model %T", t))
 	}
 }
 

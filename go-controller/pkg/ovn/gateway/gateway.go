@@ -6,7 +6,7 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/node"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -23,7 +23,7 @@ func GetOvnGateways(nbClient libovsdbclient.Client) ([]string, error) {
 	p := func(item *nbdb.LogicalRouter) bool {
 		return item.Options["chassis"] != "null"
 	}
-	logicalRouters, err := libovsdbops.FindLogicalRoutersWithPredicate(nbClient, p)
+	logicalRouters, err := ovnops.FindLogicalRoutersWithPredicate(nbClient, p)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func GetOvnGateways(nbClient libovsdbclient.Client) ([]string, error) {
 // GetGatewayPhysicalIPs return gateway physical IPs
 func GetGatewayPhysicalIPs(nbClient libovsdbclient.Client, gatewayRouter string) ([]string, error) {
 	logicalRouter := &nbdb.LogicalRouter{Name: gatewayRouter}
-	logicalRouter, err := libovsdbops.GetLogicalRouter(nbClient, logicalRouter)
+	logicalRouter, err := ovnops.GetLogicalRouter(nbClient, logicalRouter)
 	if err != nil {
 		return nil, fmt.Errorf("error getting router %s: %v", gatewayRouter, err)
 	}
@@ -78,7 +78,7 @@ func CreateDummyGWMacBindings(nbClient libovsdbclient.Client, gwRouterName strin
 		smbs[i] = smb
 	}
 
-	if err := libovsdbops.CreateOrUpdateStaticMacBinding(nbClient, smbs...); err != nil {
+	if err := ovnops.CreateOrUpdateStaticMacBinding(nbClient, smbs...); err != nil {
 		return fmt.Errorf(
 			"failed to create MAC Binding for dummy nexthop %s: %v",
 			gwRouterName,
@@ -105,5 +105,5 @@ func DeleteDummyGWMacBindings(nbClient libovsdbclient.Client, gwRouterName strin
 		smbs[i] = smb
 	}
 
-	return libovsdbops.DeleteStaticMacBindings(nbClient, smbs...)
+	return ovnops.DeleteStaticMacBindings(nbClient, smbs...)
 }

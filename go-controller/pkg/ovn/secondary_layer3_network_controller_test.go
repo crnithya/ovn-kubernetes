@@ -19,7 +19,7 @@ import (
 
 	ovncnitypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/cni/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/networkmanager"
@@ -1060,9 +1060,9 @@ func buildNamespacedPortGroup(namespace, controller string) *nbdb.PortGroup {
 	return pg
 }
 
-func getNetworkPolicyPortGroupDbIDs(namespace, controllerName, name string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNetworkPolicy, controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: libovsdbops.BuildNamespaceNameKey(namespace, name),
+func getNetworkPolicyPortGroupDbIDs(namespace, controllerName, name string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNetworkPolicy, controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: ovsdbops.BuildNamespaceNameKey(namespace, name),
 		})
 }

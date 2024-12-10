@@ -13,7 +13,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 )
@@ -108,19 +108,19 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err := libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err := ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
 			err = zoneChassisHandler.AddLocalZoneNode(&testNode2)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
 			err = zoneChassisHandler.AddRemoteZoneNode(&testNode3)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 			return nil
@@ -194,7 +194,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err := libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err := ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
@@ -203,7 +203,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
@@ -212,7 +212,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
@@ -248,7 +248,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err := libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err := ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
@@ -258,7 +258,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
@@ -267,7 +267,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
@@ -275,7 +275,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			err = zoneChassisHandler.DeleteRemoteZoneNode(&testNode1)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			// Check the SB Chassis.
-			_, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			_, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 
 			return nil
@@ -312,7 +312,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err := libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err := ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
@@ -323,7 +323,7 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			err = zoneChassisHandler.DeleteRemoteZoneNode(&testNode1)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			// Check the SB Chassis.
-			_, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			_, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 
 			return nil
@@ -358,19 +358,19 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check the SB Chassis.
-			nodeCh, err := libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err := ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
 			err = zoneChassisHandler.AddRemoteZoneNode(&testNode2)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
 			err = zoneChassisHandler.AddRemoteZoneNode(&testNode3)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
@@ -381,16 +381,16 @@ var _ = ginkgo.Describe("Zone Interconnect Chassis Operations", func() {
 			kNodes = append(kNodes, &testNode2)
 			err = zoneChassisHandler.SyncNodes(kNodes)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node3Chassis)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 			gomega.Expect(nodeCh).To(gomega.BeNil())
 
 			// chassis entries for testNode1 and testNode2 should be present
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node1Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "false"))
 
-			nodeCh, err = libovsdbops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
+			nodeCh, err = ovnops.GetChassis(libovsdbOvnSBClient, &node2Chassis)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nodeCh.OtherConfig).Should(gomega.HaveKeyWithValue("is-remote", "true"))
 
