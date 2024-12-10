@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/onsi/gomega"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -382,7 +382,7 @@ func accessControlList(name string, gressPrefix libovsdbutil.ACLDirection, prior
 func addressSet(name, gressPrefix string, priority int32, banp bool) *nbdb.AddressSet {
 	objIDs := GetANPPeerAddrSetDbIDs(name, gressPrefix, fmt.Sprintf("%d", priority),
 		"default-network-controller", banp)
-	dbIDsWithIPFam := objIDs.AddIDs(map[libovsdbops.ExternalIDKey]string{libovsdbops.IPFamilyKey: "ipv4"})
+	dbIDsWithIPFam := objIDs.AddIDs(map[ovsdbops.ExternalIDKey]string{ovsdbops.IPFamilyKey: "ipv4"})
 	as := &nbdb.AddressSet{
 		UUID:        dbIDsWithIPFam.String() + "-UUID",
 		ExternalIDs: dbIDsWithIPFam.GetExternalIDs(),

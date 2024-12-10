@@ -1,19 +1,19 @@
 package util
 
 import (
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 )
 
-func GetPortGroupName(dbIDs *ops.DbObjectIDs) string {
-	return util.HashForOVN(dbIDs.GetExternalIDs()[ops.PrimaryIDKey.String()])
+func GetPortGroupName(dbIDs *ovsdbops.DbObjectIDs) string {
+	return util.HashForOVN(dbIDs.GetExternalIDs()[ovsdbops.PrimaryIDKey.String()])
 }
 
-func BuildPortGroup(pgIDs *ops.DbObjectIDs, ports []*nbdb.LogicalSwitchPort, acls []*nbdb.ACL) *nbdb.PortGroup {
+func BuildPortGroup(pgIDs *ovsdbops.DbObjectIDs, ports []*nbdb.LogicalSwitchPort, acls []*nbdb.ACL) *nbdb.PortGroup {
 	externalIDs := pgIDs.GetExternalIDs()
 	pg := nbdb.PortGroup{
-		Name:        util.HashForOVN(externalIDs[ops.PrimaryIDKey.String()]),
+		Name:        util.HashForOVN(externalIDs[ovsdbops.PrimaryIDKey.String()]),
 		ExternalIDs: externalIDs,
 	}
 

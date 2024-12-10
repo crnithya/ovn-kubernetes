@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"reflect"
@@ -7,6 +7,7 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -20,10 +21,10 @@ func equalsMeterBand(a, b *nbdb.MeterBand) bool {
 // CreateMeterBandOps creates the provided meter band if it does not exist
 func CreateMeterBandOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, meterBand *nbdb.MeterBand) ([]ovsdb.Operation, error) {
 	bands := []*nbdb.MeterBand{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          meterBand,
 		ModelPredicate: func(item *nbdb.MeterBand) bool { return equalsMeterBand(item, meterBand) },
-		OnModelUpdates: onModelUpdatesNone(),
+		OnModelUpdates: ovsdbops.OnModelUpdatesNone(),
 		ExistingResult: &bands,
 		DoAfter: func() {
 			// in case we have multiple equal bands, pick the first one for
@@ -40,7 +41,7 @@ func CreateMeterBandOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, m
 		BulkOp:      true,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModel)
 }
 
@@ -48,19 +49,19 @@ func CreateMeterBandOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, m
 // the provided meter bands and returns the corresponding ops
 func CreateOrUpdateMeterOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, meter *nbdb.Meter, meterBands []*nbdb.MeterBand, fields ...interface{}) ([]ovsdb.Operation, error) {
 	if len(fields) == 0 {
-		fields = onModelUpdatesAllNonDefault()
+		fields = ovsdbops.OnModelUpdatesAllNonDefault()
 	}
 	meter.Bands = make([]string, 0, len(meterBands))
 	for _, band := range meterBands {
 		meter.Bands = append(meter.Bands, band.UUID)
 	}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          meter,
 		OnModelUpdates: fields,
 		ErrNotFound:    false,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	return m.CreateOrUpdateOps(ops, opModel)
 }

@@ -7,7 +7,8 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -16,7 +17,7 @@ import (
 
 type asSync struct {
 	before                *nbdb.AddressSet
-	after                 *libovsdbops.DbObjectIDs
+	after                 *ovsdbops.DbObjectIDs
 	afterTweak            func(*nbdb.AddressSet)
 	addressSetFactoryIPID string
 	remove                bool
@@ -89,7 +90,7 @@ func createInitialAS(name string, ips []string) *nbdb.AddressSet {
 	}
 }
 
-func getUpdatedAS(as *nbdb.AddressSet, dbIDs *libovsdbops.DbObjectIDs,
+func getUpdatedAS(as *nbdb.AddressSet, dbIDs *ovsdbops.DbObjectIDs,
 	addressSetFactoryIpID string) *nbdb.AddressSet {
 	var nbdbAS *nbdb.AddressSet
 	if addressSetFactoryIpID == ipv4AddressSetFactoryID {
@@ -154,8 +155,8 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 					UUID: "as1",
 					Name: hashedAddressSet("as1"),
 					ExternalIDs: map[string]string{
-						libovsdbops.OwnerControllerKey.String(): anotherControllerName,
-						"name":                                  "as_name"},
+						ovsdbops.OwnerControllerKey.String(): anotherControllerName,
+						"name":                               "as_name"},
 				},
 				leave: true,
 			},
@@ -164,8 +165,8 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 					UUID: "as2",
 					Name: hashedAddressSet("as2"),
 					ExternalIDs: map[string]string{
-						libovsdbops.OwnerControllerKey.String(): anotherControllerName,
-						"name":                                  "as_name_v4"},
+						ovsdbops.OwnerControllerKey.String(): anotherControllerName,
+						"name":                               "as_name_v4"},
 				},
 				leave: true,
 			},
@@ -393,7 +394,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 				addressSetFactoryIPID: ipv4AddressSetFactoryID,
 			},
 		}
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			"aclName",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,
@@ -434,7 +435,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 				addressSetFactoryIPID: ipv4AddressSetFactoryID,
 			},
 		}
-		acl1 := libovsdbops.BuildACL(
+		acl1 := ovnops.BuildACL(
 			"acl1",
 			nbdb.ACLDirectionFromLport,
 			types.EgressFirewallStartPriority,
@@ -450,7 +451,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 			types.PrimaryACLTier,
 		)
 		acl1.UUID = "acl1-UUID"
-		acl2 := libovsdbops.BuildACL(
+		acl2 := ovnops.BuildACL(
 			"acl2",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,
@@ -487,7 +488,7 @@ var _ = ginkgo.Describe("OVN Address Set Syncer", func() {
 		}
 		// namespace-owned address set may be referenced from different objects,
 		// test lrp, acl and qos
-		acl := libovsdbops.BuildACL(
+		acl := ovnops.BuildACL(
 			"aclName",
 			nbdb.ACLDirectionToLport,
 			types.EgressFirewallStartPriority,

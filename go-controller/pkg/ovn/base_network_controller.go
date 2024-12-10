@@ -16,7 +16,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
@@ -309,7 +310,7 @@ func (bnc *BaseNetworkController) syncNodeClusterRouterPort(node *kapi.Node, hos
 		Priority:    1,
 	}
 
-	err = libovsdbops.CreateOrUpdateLogicalRouterPort(bnc.nbClient, &logicalRouter, &logicalRouterPort,
+	err = ovnops.CreateOrUpdateLogicalRouterPort(bnc.nbClient, &logicalRouter, &logicalRouterPort,
 		&gatewayChassis, &logicalRouterPort.MAC, &logicalRouterPort.Networks)
 	if err != nil {
 		klog.Errorf("Failed to add gateway chassis %s to logical router port %s, error: %v", chassisID, lrpName, err)
@@ -325,7 +326,7 @@ func (bnc *BaseNetworkController) syncNodeClusterRouterPort(node *kapi.Node, hos
 		lrp := nbdb.LogicalRouterPort{
 			Name: lrpName,
 		}
-		logicalRouterPort, err := libovsdbops.GetLogicalRouterPort(bnc.nbClient, &lrp)
+		logicalRouterPort, err := ovnops.GetLogicalRouterPort(bnc.nbClient, &lrp)
 		if err != nil {
 			return fmt.Errorf("failed to fetch gatewayport %s for network %q on node %q, err: %w",
 				lrpName, bnc.GetNetworkName(), node.Name, err)
@@ -335,7 +336,7 @@ func (bnc *BaseNetworkController) syncNodeClusterRouterPort(node *kapi.Node, hos
 			return item.ExternalIDs[types.NetworkExternalID] == bnc.GetNetworkName() &&
 				item.LogicalPort != nil && *item.LogicalPort == lrpName && item.Match != ""
 		}
-		nonICConditonalSNATs, err := libovsdbops.FindNATsWithPredicate(bnc.nbClient, p)
+		nonICConditonalSNATs, err := ovnops.FindNATsWithPredicate(bnc.nbClient, p)
 		if err != nil {
 			return fmt.Errorf("failed to fetch conditional NATs %s for network %q on node %q, err: %w",
 				lrpName, bnc.GetNetworkName(), node.Name, err)
@@ -343,7 +344,7 @@ func (bnc *BaseNetworkController) syncNodeClusterRouterPort(node *kapi.Node, hos
 		for _, nat := range nonICConditonalSNATs {
 			nat.GatewayPort = &gatewayPort
 		}
-		if err := libovsdbops.CreateOrUpdateNATs(bnc.nbClient, &logicalRouter, nonICConditonalSNATs...); err != nil {
+		if err := ovnops.CreateOrUpdateNATs(bnc.nbClient, &logicalRouter, nonICConditonalSNATs...); err != nil {
 			return fmt.Errorf("failed to fetch conditional NATs %s for network %q on node %q, err: %w",
 				lrpName, bnc.GetNetworkName(), node.Name, err)
 		}
@@ -416,7 +417,7 @@ func (bnc *BaseNetworkController) createNodeLogicalSwitch(nodeName string, hostS
 		}
 	}
 
-	err := libovsdbops.CreateOrUpdateLogicalSwitch(bnc.nbClient, &logicalSwitch, &logicalSwitch.OtherConfig,
+	err := ovnops.CreateOrUpdateLogicalSwitch(bnc.nbClient, &logicalSwitch, &logicalSwitch.OtherConfig,
 		&logicalSwitch.LoadBalancerGroup)
 	if err != nil {
 		return fmt.Errorf("failed to add logical switch %+v: %v", logicalSwitch, err)
@@ -435,14 +436,14 @@ func (bnc *BaseNetworkController) createNodeLogicalSwitch(nodeName string, hostS
 		logicalSwitchPort.Options["arp_proxy"] = kubevirt.ComposeARPProxyLSPOption()
 	}
 	sw := nbdb.LogicalSwitch{Name: switchName}
-	err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitch(bnc.nbClient, &sw, &logicalSwitchPort)
+	err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitch(bnc.nbClient, &sw, &logicalSwitchPort)
 	if err != nil {
 		klog.Errorf("Failed to add logical port %+v to switch %s: %v", logicalSwitchPort, switchName, err)
 		return err
 	}
 
 	if bnc.multicastSupport {
-		err = libovsdbops.AddPortsToPortGroup(bnc.nbClient, bnc.getClusterPortGroupName(types.ClusterRtrPortGroupNameBase), logicalSwitchPort.UUID)
+		err = ovnops.AddPortsToPortGroup(bnc.nbClient, bnc.getClusterPortGroupName(types.ClusterRtrPortGroupNameBase), logicalSwitchPort.UUID)
 		if err != nil {
 			klog.Errorf(err.Error())
 			return fmt.Errorf("failed adding port to portgroup for multicast: %v", err)
@@ -462,7 +463,7 @@ func (bnc *BaseNetworkController) deleteNodeLogicalNetwork(nodeName string) erro
 	switchName := bnc.GetNetworkScopedName(nodeName)
 
 	// Remove the logical switch associated with the node
-	err := libovsdbops.DeleteLogicalSwitch(bnc.nbClient, switchName)
+	err := ovnops.DeleteLogicalSwitch(bnc.nbClient, switchName)
 	if err != nil {
 		return fmt.Errorf("failed to delete logical switch %s: %v", switchName, err)
 	}
@@ -472,7 +473,7 @@ func (bnc *BaseNetworkController) deleteNodeLogicalNetwork(nodeName string) erro
 	logicalRouterPort := nbdb.LogicalRouterPort{
 		Name: types.RouterToSwitchPrefix + switchName,
 	}
-	err = libovsdbops.DeleteLogicalRouterPorts(bnc.nbClient, &logicalRouter, &logicalRouterPort)
+	err = ovnops.DeleteLogicalRouterPorts(bnc.nbClient, &logicalRouter, &logicalRouterPort)
 	if err != nil {
 		return fmt.Errorf("failed to delete router port %s: %w", logicalRouterPort.Name, err)
 	}
@@ -615,7 +616,7 @@ func (bnc *BaseNetworkController) deleteNamespaceLocked(ns string) (*namespaceIn
 		}()
 	}
 	if nsInfo.portGroupName != "" {
-		err := libovsdbops.DeletePortGroups(bnc.nbClient, nsInfo.portGroupName)
+		err := ovnops.DeletePortGroups(bnc.nbClient, nsInfo.portGroupName)
 		if err != nil {
 			nsInfo.Unlock()
 			return nil, err
@@ -660,9 +661,9 @@ func (bnc *BaseNetworkController) syncNodeManagementPort(node *kapi.Node, switch
 				}
 			}
 			p := func(item *nbdb.LogicalRouterStaticRoute) bool {
-				return item.IPPrefix == lrsr.IPPrefix && libovsdbops.PolicyEqualPredicate(lrsr.Policy, item.Policy)
+				return item.IPPrefix == lrsr.IPPrefix && ovnops.PolicyEqualPredicate(lrsr.Policy, item.Policy)
 			}
-			err := libovsdbops.CreateOrReplaceLogicalRouterStaticRouteWithPredicate(bnc.nbClient, routerName,
+			err := ovnops.CreateOrReplaceLogicalRouterStaticRouteWithPredicate(bnc.nbClient, routerName,
 				&lrsr, p, &lrsr.Nexthop)
 			if err != nil {
 				return nil, fmt.Errorf("error creating static route %+v on router %s: %v", lrsr, routerName, err)
@@ -676,13 +677,13 @@ func (bnc *BaseNetworkController) syncNodeManagementPort(node *kapi.Node, switch
 		Addresses: []string{addresses},
 	}
 	sw := nbdb.LogicalSwitch{Name: switchName}
-	err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitch(bnc.nbClient, &sw, &logicalSwitchPort)
+	err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitch(bnc.nbClient, &sw, &logicalSwitchPort)
 	if err != nil {
 		return nil, err
 	}
 
 	clusterPortGroupName := bnc.getClusterPortGroupName(types.ClusterPortGroupNameBase)
-	if err = libovsdbops.AddPortsToPortGroup(bnc.nbClient, clusterPortGroupName, logicalSwitchPort.UUID); err != nil {
+	if err = ovnops.AddPortsToPortGroup(bnc.nbClient, clusterPortGroupName, logicalSwitchPort.UUID); err != nil {
 		err1 := fmt.Errorf("failed to add port %s to cluster port group %s (%s): %w",
 			logicalSwitchPort.Name, types.ClusterPortGroupNameBase, clusterPortGroupName, err)
 		klog.Error(err1)
@@ -710,7 +711,7 @@ func (bnc *BaseNetworkController) addLocalPodToNamespaceLocked(nsInfo *namespace
 	}
 
 	if portUUID != "" && nsInfo.portGroupName != "" {
-		if ops, err = libovsdbops.AddPortsToPortGroupOps(bnc.nbClient, ops, nsInfo.portGroupName, portUUID); err != nil {
+		if ops, err = ovnops.AddPortsToPortGroupOps(bnc.nbClient, ops, nsInfo.portGroupName, portUUID); err != nil {
 			return nil, err
 		}
 	}
@@ -769,10 +770,10 @@ func (bnc *BaseNetworkController) getPodNADNames(pod *kapi.Pod) []string {
 	return podNadNames
 }
 
-func (bnc *BaseNetworkController) getClusterPortGroupDbIDs(base string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupCluster, bnc.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: base,
+func (bnc *BaseNetworkController) getClusterPortGroupDbIDs(base string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupCluster, bnc.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: base,
 		})
 }
 
@@ -1007,7 +1008,7 @@ func initLoadBalancerGroups(nbClient libovsdbclient.Client, netInfo util.NetInfo
 
 	loadBalancerGroupName := netInfo.GetNetworkScopedLoadBalancerGroupName(ovntypes.ClusterLBGroupName)
 	clusterLBGroup := nbdb.LoadBalancerGroup{Name: loadBalancerGroupName}
-	ops, err := libovsdbops.CreateOrUpdateLoadBalancerGroupOps(nbClient, nil, &clusterLBGroup)
+	ops, err := ovnops.CreateOrUpdateLoadBalancerGroupOps(nbClient, nil, &clusterLBGroup)
 	if err != nil {
 		klog.Errorf("Error creating operation for cluster-wide load balancer group %s: %v", loadBalancerGroupName, err)
 		return
@@ -1015,7 +1016,7 @@ func initLoadBalancerGroups(nbClient libovsdbclient.Client, netInfo util.NetInfo
 
 	loadBalancerGroupName = netInfo.GetNetworkScopedLoadBalancerGroupName(ovntypes.ClusterSwitchLBGroupName)
 	clusterSwitchLBGroup := nbdb.LoadBalancerGroup{Name: loadBalancerGroupName}
-	ops, err = libovsdbops.CreateOrUpdateLoadBalancerGroupOps(nbClient, ops, &clusterSwitchLBGroup)
+	ops, err = ovnops.CreateOrUpdateLoadBalancerGroupOps(nbClient, ops, &clusterSwitchLBGroup)
 	if err != nil {
 		klog.Errorf("Error creating operation for cluster-wide switch load balancer group %s: %v", loadBalancerGroupName, err)
 		return
@@ -1023,14 +1024,14 @@ func initLoadBalancerGroups(nbClient libovsdbclient.Client, netInfo util.NetInfo
 
 	loadBalancerGroupName = netInfo.GetNetworkScopedLoadBalancerGroupName(ovntypes.ClusterRouterLBGroupName)
 	clusterRouterLBGroup := nbdb.LoadBalancerGroup{Name: loadBalancerGroupName}
-	ops, err = libovsdbops.CreateOrUpdateLoadBalancerGroupOps(nbClient, ops, &clusterRouterLBGroup)
+	ops, err = ovnops.CreateOrUpdateLoadBalancerGroupOps(nbClient, ops, &clusterRouterLBGroup)
 	if err != nil {
 		klog.Errorf("Error creating operation for cluster-wide router load balancer group %s: %v", loadBalancerGroupName, err)
 		return
 	}
 
 	lbs := []*nbdb.LoadBalancerGroup{&clusterLBGroup, &clusterSwitchLBGroup, &clusterRouterLBGroup}
-	if _, err = libovsdbops.TransactAndCheckAndSetUUIDs(nbClient, lbs, ops); err != nil {
+	if _, err = ovsdbops.TransactAndCheckAndSetUUIDs(nbClient, lbs, ops); err != nil {
 		klog.Errorf("Error creating cluster-wide router load balancer group %s: %v", loadBalancerGroupName, err)
 		return
 	}
@@ -1047,7 +1048,7 @@ func (bnc *BaseNetworkController) setupClusterPortGroups() error {
 	pg := &nbdb.PortGroup{
 		Name: libovsdbutil.GetPortGroupName(pgIDs),
 	}
-	pg, err := libovsdbops.GetPortGroup(bnc.nbClient, pg)
+	pg, err := ovnops.GetPortGroup(bnc.nbClient, pg)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		return fmt.Errorf("failed to query cluster port group for network %s: %w", bnc.GetNetworkName(), err)
 	}
@@ -1055,7 +1056,7 @@ func (bnc *BaseNetworkController) setupClusterPortGroups() error {
 		// we didn't find an existing clusterPG, let's create a new empty PG (fresh cluster install)
 		// Create a cluster-wide port group that all logical switch ports are part of
 		pg := libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-		err = libovsdbops.CreateOrUpdatePortGroups(bnc.nbClient, pg)
+		err = ovnops.CreateOrUpdatePortGroups(bnc.nbClient, pg)
 		if err != nil {
 			return fmt.Errorf("failed to create cluster port group for network %s: %w", bnc.GetNetworkName(), err)
 		}
@@ -1065,7 +1066,7 @@ func (bnc *BaseNetworkController) setupClusterPortGroups() error {
 	pg = &nbdb.PortGroup{
 		Name: libovsdbutil.GetPortGroupName(pgIDs),
 	}
-	pg, err = libovsdbops.GetPortGroup(bnc.nbClient, pg)
+	pg, err = ovnops.GetPortGroup(bnc.nbClient, pg)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		return fmt.Errorf("failed to query cluster router port group for network %s: %w", bnc.GetNetworkName(), err)
 	}
@@ -1075,7 +1076,7 @@ func (bnc *BaseNetworkController) setupClusterPortGroups() error {
 		// logical switch ports. Currently the only user is multicast but it might
 		// be used for other features in the future.
 		pg = libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-		err = libovsdbops.CreateOrUpdatePortGroups(bnc.nbClient, pg)
+		err = ovnops.CreateOrUpdatePortGroups(bnc.nbClient, pg)
 		if err != nil {
 			return fmt.Errorf("failed to create cluster router port group for network %s: %w", bnc.GetNetworkName(), err)
 		}
@@ -1083,7 +1084,7 @@ func (bnc *BaseNetworkController) setupClusterPortGroups() error {
 	return nil
 }
 
-func (bnc *BaseNetworkController) GetSamplingConfig() *libovsdbops.SamplingConfig {
+func (bnc *BaseNetworkController) GetSamplingConfig() *ovnops.SamplingConfig {
 	if bnc.observManager != nil {
 		return bnc.observManager.SamplingConfig()
 	}

@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import (
 	"fmt"
@@ -23,6 +23,6 @@ func isNamedUUID(id string) bool {
 
 // buildNamedUUID builds an id that can be used as a named-uuid
 // as per OVSDB rfc 7047 section 5.1
-func buildNamedUUID() string {
+func BuildNamedUUID() string {
 	return fmt.Sprintf("%c%010d", namedUUIDPrefix, atomic.AddUint32(&namedUUIDCounter, 1))
 }

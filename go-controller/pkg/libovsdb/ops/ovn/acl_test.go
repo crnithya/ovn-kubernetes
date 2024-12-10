@@ -1,9 +1,10 @@
-package ops
+package ovn
 
 import (
 	"fmt"
 	"testing"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -14,7 +15,7 @@ func TestCreateOrUpdateACL(t *testing.T) {
 	aclSev := nbdb.ACLSeverityInfo
 	aclMeter := types.OvnACLLoggingMeter
 	initialACL := &nbdb.ACL{
-		UUID:        buildNamedUUID(),
+		UUID:        ovsdbops.BuildNamedUUID(),
 		Action:      nbdb.ACLActionAllow,
 		Direction:   nbdb.ACLDirectionToLport,
 		ExternalIDs: map[string]string{"key": "value"},
@@ -118,7 +119,7 @@ func TestCreateOrUpdateACL(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			sw := &nbdb.LogicalSwitch{
 				Name: "sw1",
-				UUID: buildNamedUUID(),
+				UUID: ovsdbops.BuildNamedUUID(),
 				ACLs: []string{tt.initialACL.UUID},
 			}
 

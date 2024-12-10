@@ -18,7 +18,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	egressipv1 "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressip/v1"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
@@ -57,28 +58,28 @@ const (
 	ReplyTrafficMark      egressIPQoSRuleName         = "EgressIP-Mark-Reply-Traffic"
 )
 
-func getEgressIPAddrSetDbIDs(name egressIPAddrSetName, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressIP, controller, map[libovsdbops.ExternalIDKey]string{
+func getEgressIPAddrSetDbIDs(name egressIPAddrSetName, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressIP, controller, map[ovsdbops.ExternalIDKey]string{
 		// egress ip creates cluster-wide address sets with egressIpAddrSetName
-		libovsdbops.ObjectNameKey: string(name),
+		ovsdbops.ObjectNameKey: string(name),
 	})
 }
 
-func getEgressIPLRPNoReRouteDbIDs(priority int, uniqueName egressIPNoReroutePolicyName, ipFamily egressIPFamilyValue) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName, map[libovsdbops.ExternalIDKey]string{
+func getEgressIPLRPNoReRouteDbIDs(priority int, uniqueName egressIPNoReroutePolicyName, ipFamily egressIPFamilyValue) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName, map[ovsdbops.ExternalIDKey]string{
 		// egress ip creates global no-reroute policies at 102 priority
-		libovsdbops.ObjectNameKey: string(uniqueName),
-		libovsdbops.PriorityKey:   fmt.Sprintf("%d", priority),
-		libovsdbops.IPFamilyKey:   string(ipFamily),
+		ovsdbops.ObjectNameKey: string(uniqueName),
+		ovsdbops.PriorityKey:   fmt.Sprintf("%d", priority),
+		ovsdbops.IPFamilyKey:   string(ipFamily),
 	})
 }
 
-func getEgressIPQoSRuleDbIDs(ipFamily egressIPFamilyValue) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName, map[libovsdbops.ExternalIDKey]string{
+func getEgressIPQoSRuleDbIDs(ipFamily egressIPFamilyValue) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName, map[ovsdbops.ExternalIDKey]string{
 		// egress ip creates reply traffic marker rule at 103 priority
-		libovsdbops.ObjectNameKey: string(ReplyTrafficMark),
-		libovsdbops.PriorityKey:   fmt.Sprintf("%d", types.EgressIPRerouteQoSRulePriority),
-		libovsdbops.IPFamilyKey:   string(ipFamily),
+		ovsdbops.ObjectNameKey: string(ReplyTrafficMark),
+		ovsdbops.PriorityKey:   fmt.Sprintf("%d", types.EgressIPRerouteQoSRulePriority),
+		ovsdbops.IPFamilyKey:   string(ipFamily),
 	})
 }
 
@@ -934,14 +935,14 @@ func (oc *DefaultNetworkController) syncPodAssignmentCache(egressIPCache map[str
 		p1 := func(item *nbdb.LogicalRouterPolicy) bool {
 			return item.Priority == types.EgressIPReroutePriority && item.ExternalIDs["name"] == egressIPName
 		}
-		reRoutePolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(oc.nbClient, p1)
+		reRoutePolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(oc.nbClient, p1)
 		if err != nil {
 			return err
 		}
 		p2 := func(item *nbdb.NAT) bool {
 			return item.ExternalIDs["name"] == egressIPName
 		}
-		egressIPSNATs, err := libovsdbops.FindNATsWithPredicate(oc.nbClient, p2)
+		egressIPSNATs, err := ovnops.FindNATsWithPredicate(oc.nbClient, p2)
 		if err != nil {
 			return err
 		}
@@ -1044,7 +1045,7 @@ func (oc *DefaultNetworkController) syncStaleEgressReroutePolicy(egressIPCache m
 		return false
 	}
 
-	err := libovsdbops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
+	err := ovnops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
 	if err != nil {
 		return fmt.Errorf("error deleting stale logical router policies from router %s: %v", oc.GetNetworkScopedClusterRouterName(), err)
 	}
@@ -1052,7 +1053,7 @@ func (oc *DefaultNetworkController) syncStaleEgressReroutePolicy(egressIPCache m
 	// Update Logical Router Policies that have stale nexthops. Notice that we must do this separately
 	// because logicalRouterPolicyStaleNexthops must be populated first
 	klog.Infof("syncStaleEgressReroutePolicy will remove stale nexthops: %+v", logicalRouterPolicyStaleNexthops)
-	err = libovsdbops.DeleteNextHopsFromLogicalRouterPolicies(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), logicalRouterPolicyStaleNexthops...)
+	err = ovnops.DeleteNextHopsFromLogicalRouterPolicies(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), logicalRouterPolicyStaleNexthops...)
 	if err != nil {
 		return fmt.Errorf("unable to remove stale next hops from logical router policies: %v", err)
 	}
@@ -1095,7 +1096,7 @@ func (oc *DefaultNetworkController) syncStaleSNATRules(egressIPCache map[string]
 		return false
 	}
 
-	nats, err := libovsdbops.FindNATsWithPredicate(oc.nbClient, predicate)
+	nats, err := ovnops.FindNATsWithPredicate(oc.nbClient, predicate)
 	if err != nil {
 		return fmt.Errorf("unable to sync egress IPs err: %v", err)
 	}
@@ -1112,7 +1113,7 @@ func (oc *DefaultNetworkController) syncStaleSNATRules(egressIPCache map[string]
 	p := func(item *nbdb.LogicalRouter) bool {
 		return natIds.HasAny(item.Nat...)
 	}
-	routers, err := libovsdbops.FindLogicalRoutersWithPredicate(oc.nbClient, p)
+	routers, err := ovnops.FindLogicalRoutersWithPredicate(oc.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to sync egress IPs, err: %v", err)
 	}
@@ -1120,7 +1121,7 @@ func (oc *DefaultNetworkController) syncStaleSNATRules(egressIPCache map[string]
 	var errors []error
 	ops := []ovsdb.Operation{}
 	for _, router := range routers {
-		ops, err = libovsdbops.DeleteNATsOps(oc.nbClient, ops, router, nats...)
+		ops, err = ovnops.DeleteNATsOps(oc.nbClient, ops, router, nats...)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error deleting stale NAT from router %s: %v", router.Name, err))
 			continue
@@ -1136,13 +1137,13 @@ func (oc *DefaultNetworkController) syncStaleSNATRules(egressIPCache map[string]
 		predicate := func(item *nbdb.NAT) bool {
 			return natIds.Has(item.UUID)
 		}
-		ops, err = libovsdbops.DeleteNATsWithPredicateOps(oc.nbClient, ops, predicate)
+		ops, err = ovnops.DeleteNATsWithPredicateOps(oc.nbClient, ops, predicate)
 		if err != nil {
 			return fmt.Errorf("unable to delete stale SNATs err: %v", err)
 		}
 	}
 
-	_, err = libovsdbops.TransactAndCheck(oc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(oc.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("error deleting stale NATs: %v", err)
 	}
@@ -1533,7 +1534,7 @@ func (e *egressIPZoneController) addPodEgressIPAssignment(egressIPName string, s
 			return err
 		}
 	}
-	_, err = libovsdbops.TransactAndCheck(e.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(e.nbClient, ops)
 	return err
 }
 
@@ -1604,7 +1605,7 @@ func (e *egressIPZoneController) deletePodEgressIPAssignment(egressIPName string
 			return fmt.Errorf("unable to delete NAT rule for status: %v, err: %v", status, err)
 		}
 	}
-	_, err = libovsdbops.TransactAndCheck(e.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(e.nbClient, ops)
 	return err
 }
 
@@ -1624,7 +1625,7 @@ func (e *egressIPZoneController) addExternalGWPodSNAT(podNamespace, podName stri
 	if err != nil {
 		return fmt.Errorf("error creating ops for adding external gw pod snat: %+v", err)
 	}
-	_, err = libovsdbops.TransactAndCheck(e.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(e.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("error trasnsacting ops %+v: %v", ops, err)
 	}
@@ -1756,7 +1757,7 @@ func (e *egressIPZoneController) getNextHop(egressNodeName, egressIP, egressIPNa
 			nextHopIP = gatewayRouterIP.String()
 		} else {
 			mgmtPort := &nbdb.LogicalSwitchPort{Name: e.GetNetworkScopedK8sMgmtIntfName(egressNodeName)}
-			mgmtPort, err := libovsdbops.GetLogicalSwitchPort(e.nbClient, mgmtPort)
+			mgmtPort, err := ovnops.GetLogicalSwitchPort(e.nbClient, mgmtPort)
 			if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 				return "", fmt.Errorf("failed to get next hop IP for secondary host network and egress IP %s for node %s "+
 					"because unable to get management port: %v", egressIPName, egressNodeName, err)
@@ -1824,7 +1825,7 @@ func (e *egressIPZoneController) createReroutePolicyOps(ops []ovsdb.Operation, p
 			return item.Match == lrp.Match && item.Priority == lrp.Priority && item.ExternalIDs["name"] == lrp.ExternalIDs["name"]
 		}
 
-		ops, err = libovsdbops.CreateOrAddNextHopsToLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), &lrp, p)
+		ops, err = ovnops.CreateOrAddNextHopsToLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), &lrp, p)
 		if err != nil {
 			return nil, fmt.Errorf("error creating logical router policy %+v on router %s: %v", lrp, e.GetNetworkScopedClusterRouterName(), err)
 		}
@@ -1852,7 +1853,7 @@ func (e *egressIPZoneController) deleteReroutePolicyOps(ops []ovsdb.Operation, p
 			return item.Match == filterOption && item.Priority == types.EgressIPReroutePriority && item.ExternalIDs["name"] == egressIPName
 		}
 		if nextHopIP != "" {
-			ops, err = libovsdbops.DeleteNextHopFromLogicalRouterPoliciesWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), p, nextHopIP)
+			ops, err = ovnops.DeleteNextHopFromLogicalRouterPoliciesWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), p, nextHopIP)
 			if err != nil {
 				return nil, fmt.Errorf("error removing nexthop IP %s from egress ip %s policies on router %s: %v",
 					nextHopIP, egressIPName, e.GetNetworkScopedClusterRouterName(), err)
@@ -1862,7 +1863,7 @@ func (e *egressIPZoneController) deleteReroutePolicyOps(ops []ovsdb.Operation, p
 				egressIPName, status.EgressIP)
 			// since next hop was not found, delete everything to ensure no stale entries however this will break load
 			// balancing between hops, but we offer no guarantees except one of the EIPs will work
-			ops, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), p)
+			ops, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), p)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create logical router policy operations on ovn_cluster_router: %v", err)
 			}
@@ -1900,7 +1901,7 @@ func (e *egressIPZoneController) deleteEgressIPStatusSetup(name string, status e
 			}
 			return item.Priority == types.EgressIPReroutePriority && item.ExternalIDs["name"] == name && hasIPNexthop
 		}
-		ops, err = libovsdbops.DeleteNextHopFromLogicalRouterPoliciesWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), policyPred, nextHopIP)
+		ops, err = ovnops.DeleteNextHopFromLogicalRouterPoliciesWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), policyPred, nextHopIP)
 		if err != nil {
 			return nil, fmt.Errorf("error removing nexthop IP %s from egress ip %s policies on router %s: %v",
 				nextHopIP, name, e.GetNetworkScopedClusterRouterName(), err)
@@ -1917,16 +1918,16 @@ func (e *egressIPZoneController) deleteEgressIPStatusSetup(name string, status e
 			// We should delete NATs only from the status.Node that was passed into this function
 			return nat.ExternalIDs["name"] == name && nat.ExternalIP == status.EgressIP && nat.LogicalPort != nil && *nat.LogicalPort == e.GetNetworkScopedK8sMgmtIntfName(status.Node)
 		}
-		nats, err = libovsdbops.FindNATsWithPredicate(e.nbClient, natPred) // save the nats to get the podIPs before that nats get deleted
+		nats, err = ovnops.FindNATsWithPredicate(e.nbClient, natPred) // save the nats to get the podIPs before that nats get deleted
 		if err != nil {
 			return nil, fmt.Errorf("error removing egress ip pods from adress set %s: %v", EgressIPServedPodsAddrSetName, err)
 		}
-		ops, err = libovsdbops.DeleteNATsWithPredicateOps(e.nbClient, ops, natPred)
+		ops, err = ovnops.DeleteNATsWithPredicateOps(e.nbClient, ops, natPred)
 		if err != nil {
 			return nil, fmt.Errorf("error removing egress ip %s nats on router %s: %v", name, routerName, err)
 		}
 	}
-	_, err = libovsdbops.TransactAndCheck(e.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(e.nbClient, ops)
 	if err != nil {
 		return nil, fmt.Errorf("error transacting ops %+v: %v", ops, err)
 	}
@@ -1953,7 +1954,7 @@ func (e *egressIPZoneController) ensureOnlyValidNextHops(name string, ops []libo
 		return ops, fmt.Errorf("error retrieving EgressIP %s object for updating logical router policy nexthops, err: %w", name, err)
 	} else if err != nil && apierrors.IsNotFound(err) {
 		// EgressIP object is not found, so delete LRP associated with it.
-		ops, err = libovsdbops.DeleteLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), policyPred)
+		ops, err = ovnops.DeleteLogicalRouterPolicyWithPredicateOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), policyPred)
 		if err != nil {
 			return ops, fmt.Errorf("error creating ops to remove logical router policy for EgressIP %s from router %s: %v",
 				name, e.GetNetworkScopedClusterRouterName(), err)
@@ -1969,12 +1970,12 @@ func (e *egressIPZoneController) ensureOnlyValidNextHops(name string, ops []libo
 			validNextHopIPs.Insert(nextHopIP)
 		}
 
-		reRoutePolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(e.nbClient, policyPred)
+		reRoutePolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(e.nbClient, policyPred)
 		if err != nil {
 			return ops, fmt.Errorf("error finding logical router policy for EgressIP %s: %v", name, err)
 		}
 		if len(validNextHopIPs) == 0 {
-			ops, err = libovsdbops.DeleteLogicalRouterPoliciesOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), reRoutePolicies...)
+			ops, err = ovnops.DeleteLogicalRouterPoliciesOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), reRoutePolicies...)
 			if err != nil {
 				return ops, fmt.Errorf("error creating ops to remove logical router policy for EgressIP %s from router %s: %v",
 					name, e.GetNetworkScopedClusterRouterName(), err)
@@ -1986,7 +1987,7 @@ func (e *egressIPZoneController) ensureOnlyValidNextHops(name string, ops []libo
 				if validNextHopIPs.Has(nextHop) {
 					continue
 				}
-				ops, err = libovsdbops.DeleteNextHopsFromLogicalRouterPolicyOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), []*nbdb.LogicalRouterPolicy{policy}, nextHop)
+				ops, err = ovnops.DeleteNextHopsFromLogicalRouterPolicyOps(e.nbClient, ops, e.GetNetworkScopedClusterRouterName(), []*nbdb.LogicalRouterPolicy{policy}, nextHop)
 				if err != nil {
 					return ops, fmt.Errorf("error creating ops to remove stale next hop IP %s from logical router policy for EgressIP %s from router %s: %v",
 						nextHop, name, e.GetNetworkScopedClusterRouterName(), err)
@@ -2124,7 +2125,7 @@ func createDefaultReRouteQoSRuleOps(nbClient libovsdbclient.Client, addressSetFa
 		qosV4Rule := qosRule
 		qosV4Rule.Match = fmt.Sprintf(`ip4.src == $%s && ct.trk && ct.rpl`, ipv4EgressIPServedPodsAS)
 		qosV4Rule.ExternalIDs = getEgressIPQoSRuleDbIDs(IPFamilyValueV4).GetExternalIDs()
-		ops, err = libovsdbops.CreateOrUpdateQoSesOps(nbClient, nil, &qosV4Rule)
+		ops, err = ovnops.CreateOrUpdateQoSesOps(nbClient, nil, &qosV4Rule)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot create v4 QoS rule ops for egressIP feature on controller %s, %v", controllerName, err)
 		}
@@ -2134,7 +2135,7 @@ func createDefaultReRouteQoSRuleOps(nbClient libovsdbclient.Client, addressSetFa
 		qosV6Rule := qosRule
 		qosV6Rule.Match = fmt.Sprintf(`ip6.src == $%s && ct.trk && ct.rpl`, ipv6EgressIPServedPodsAS)
 		qosV6Rule.ExternalIDs = getEgressIPQoSRuleDbIDs(IPFamilyValueV6).GetExternalIDs()
-		ops, err = libovsdbops.CreateOrUpdateQoSesOps(nbClient, ops, &qosV6Rule)
+		ops, err = ovnops.CreateOrUpdateQoSesOps(nbClient, ops, &qosV6Rule)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot create v6 QoS rule ops for egressIP feature on controller %s, %v", controllerName, err)
 		}
@@ -2152,12 +2153,12 @@ func (oc *DefaultNetworkController) ensureDefaultNoRerouteQoSRules(nodeName stri
 	// doesn't cause no-op construction spams at scale (kubelet sends node
 	// update events every 10seconds so we don't want to cause unnecessary
 	// no-op transacts that often and lookup is less expensive)
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: string(ReplyTrafficMark),
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.LogicalRouterPolicyEgressIP, DefaultNetworkControllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: string(ReplyTrafficMark),
 		})
-	qosPredicate := libovsdbops.GetPredicate[*nbdb.QoS](predicateIDs, nil)
-	existingQoSes, err := libovsdbops.FindQoSesWithPredicate(oc.nbClient, qosPredicate)
+	qosPredicate := ovsdbops.GetPredicate[*nbdb.QoS](predicateIDs, nil)
+	existingQoSes, err := ovnops.FindQoSesWithPredicate(oc.nbClient, qosPredicate)
 	if err != nil {
 		return err
 	}
@@ -2181,7 +2182,7 @@ func (oc *DefaultNetworkController) ensureDefaultNoRerouteQoSRules(nodeName stri
 		if qosExists {
 			// check if these rules were already added to the existing switch or not
 			addQoSToSwitch := false
-			nodeSwitch, err := libovsdbops.GetLogicalSwitch(oc.nbClient, &nbdb.LogicalSwitch{Name: nodeSwitchName})
+			nodeSwitch, err := ovnops.GetLogicalSwitch(oc.nbClient, &nbdb.LogicalSwitch{Name: nodeSwitchName})
 			if err != nil {
 				return fmt.Errorf("cannot fetch switch for node %s: %v", nodeSwitchName, err)
 			}
@@ -2197,12 +2198,12 @@ func (oc *DefaultNetworkController) ensureDefaultNoRerouteQoSRules(nodeName stri
 				return nil
 			}
 		}
-		ops, err = libovsdbops.AddQoSesToLogicalSwitchOps(oc.nbClient, ops, nodeSwitchName, existingQoSes...)
+		ops, err = ovnops.AddQoSesToLogicalSwitchOps(oc.nbClient, ops, nodeSwitchName, existingQoSes...)
 		if err != nil {
 			return err
 		}
 	}
-	if _, err := libovsdbops.TransactAndCheck(oc.nbClient, ops); err != nil {
+	if _, err := ovsdbops.TransactAndCheck(oc.nbClient, ops); err != nil {
 		return fmt.Errorf("unable to add EgressIP QoS to switch on zone %s, err: %v", oc.zone, err)
 	}
 	return nil
@@ -2298,7 +2299,7 @@ func createLogicalRouterPolicy(nbClient libovsdbclient.Client, clusterRouter, ma
 	p := func(item *nbdb.LogicalRouterPolicy) bool {
 		return item.Match == lrp.Match && item.Priority == lrp.Priority
 	}
-	err := libovsdbops.CreateOrUpdateLogicalRouterPolicyWithPredicate(nbClient, clusterRouter, &lrp, p)
+	err := ovnops.CreateOrUpdateLogicalRouterPolicyWithPredicate(nbClient, clusterRouter, &lrp, p)
 	if err != nil {
 		return fmt.Errorf("error creating logical router policy %+v on router %s: %v", lrp, clusterRouter, err)
 	}
@@ -2319,7 +2320,7 @@ func DeleteLegacyDefaultNoRerouteNodePolicies(nbClient libovsdbclient.Client, cl
 		}
 		return nodeName == node
 	}
-	return libovsdbops.DeleteLogicalRouterPoliciesWithPredicate(nbClient, clusterRouter, p)
+	return ovnops.DeleteLogicalRouterPoliciesWithPredicate(nbClient, clusterRouter, p)
 }
 
 func (e *egressIPZoneController) buildSNATFromEgressIPStatus(podIP net.IP, status egressipv1.EgressIPStatusItem, egressIPName string) (*nbdb.NAT, error) {
@@ -2330,7 +2331,7 @@ func (e *egressIPZoneController) buildSNATFromEgressIPStatus(podIP net.IP, statu
 	externalIP := net.ParseIP(status.EgressIP)
 	logicalPort := e.GetNetworkScopedK8sMgmtIntfName(status.Node)
 	externalIds := map[string]string{"name": egressIPName}
-	nat := libovsdbops.BuildSNAT(&externalIP, logicalIP, logicalPort, externalIds)
+	nat := ovnops.BuildSNAT(&externalIP, logicalIP, logicalPort, externalIds)
 	return nat, nil
 }
 
@@ -2350,7 +2351,7 @@ func (e *egressIPZoneController) createNATRuleOps(ops []ovsdb.Operation, podIPs 
 	router := &nbdb.LogicalRouter{
 		Name: e.GetNetworkScopedGWRouterName(status.Node),
 	}
-	ops, err = libovsdbops.CreateOrUpdateNATsOps(e.nbClient, ops, router, nats...)
+	ops, err = ovnops.CreateOrUpdateNATsOps(e.nbClient, ops, router, nats...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create snat rules, for router: %s, error: %v", router.Name, err)
 	}
@@ -2373,7 +2374,7 @@ func (e *egressIPZoneController) deleteNATRuleOps(ops []ovsdb.Operation, podIPs 
 	router := &nbdb.LogicalRouter{
 		Name: e.GetNetworkScopedGWRouterName(status.Node),
 	}
-	ops, err = libovsdbops.DeleteNATsOps(e.nbClient, ops, router, nats...)
+	ops, err = ovnops.DeleteNATsOps(e.nbClient, ops, router, nats...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to remove snat rules for router: %s, error: %v", router.Name, err)
 	}

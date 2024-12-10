@@ -8,7 +8,7 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -35,7 +35,7 @@ func UpdateNodeSwitchExcludeIPs(nbClient libovsdbclient.Client, mgmtIfName, swit
 	// Only query the cache for mp0 and HO LSPs
 	haveManagementPort := true
 	managmentPort := &nbdb.LogicalSwitchPort{Name: mgmtIfName}
-	_, err := libovsdbops.GetLogicalSwitchPort(nbClient, managmentPort)
+	_, err := ovnops.GetLogicalSwitchPort(nbClient, managmentPort)
 	if errors.Is(err, libovsdbclient.ErrNotFound) {
 		klog.V(5).Infof("Management port does not exist for node %s", nodeName)
 		haveManagementPort = false
@@ -45,7 +45,7 @@ func UpdateNodeSwitchExcludeIPs(nbClient libovsdbclient.Client, mgmtIfName, swit
 
 	haveHybridOverlayPort := true
 	HOPort := &nbdb.LogicalSwitchPort{Name: types.HybridOverlayPrefix + nodeName}
-	_, err = libovsdbops.GetLogicalSwitchPort(nbClient, HOPort)
+	_, err = ovnops.GetLogicalSwitchPort(nbClient, HOPort)
 	if errors.Is(err, libovsdbclient.ErrNotFound) {
 		klog.V(5).Infof("Hybridoverlay port does not exist for node %s", nodeName)
 		haveHybridOverlayPort = false
@@ -80,7 +80,7 @@ func UpdateNodeSwitchExcludeIPs(nbClient libovsdbclient.Client, mgmtIfName, swit
 		Name:        switchName,
 		OtherConfig: map[string]string{"exclude_ips": excludeIPs},
 	}
-	err = libovsdbops.UpdateLogicalSwitchSetOtherConfig(nbClient, &sw)
+	err = ovnops.UpdateLogicalSwitchSetOtherConfig(nbClient, &sw)
 	if err != nil {
 		return fmt.Errorf("failed to update exclude_ips %+v: %v", sw, err)
 	}

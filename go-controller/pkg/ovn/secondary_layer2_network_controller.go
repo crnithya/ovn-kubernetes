@@ -14,7 +14,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/generator/udn"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	nad "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/network-attach-def-controller"
@@ -638,7 +638,7 @@ func (oc *SecondaryLayer2NetworkController) addPortForRemoteNodeGR(node *corev1.
 		"requested-chassis": node.Name,
 	}
 	sw := nbdb.LogicalSwitch{Name: oc.GetNetworkScopedSwitchName(types.OVNLayer2Switch)}
-	err = libovsdbops.CreateOrUpdateLogicalSwitchPortsOnSwitch(oc.nbClient, &sw, &logicalSwitchPort)
+	err = ovnops.CreateOrUpdateLogicalSwitchPortsOnSwitch(oc.nbClient, &sw, &logicalSwitchPort)
 	if err != nil {
 		return fmt.Errorf("failed to create port %v on logical switch %q: %v", logicalSwitchPort, sw.Name, err)
 	}
@@ -677,7 +677,7 @@ func (oc *SecondaryLayer2NetworkController) addUDNClusterSubnetEgressSNAT(localP
 	router := &nbdb.LogicalRouter{
 		Name: routerName,
 	}
-	if err := libovsdbops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
+	if err := ovnops.CreateOrUpdateNATs(oc.nbClient, router, nats...); err != nil {
 		return fmt.Errorf("failed to update SNAT for cluster on router: %q for network %q, error: %w",
 			routerName, oc.GetNetworkName(), err)
 	}

@@ -7,7 +7,7 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -227,6 +227,6 @@ func (dnsTracker *dnsTracker) deleteStaleAddressSets(nbClient libovsdbclient.Cli
 	dnsTracker.dnsLock.Lock()
 	defer dnsTracker.dnsLock.Unlock()
 
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressFirewallDNS, dnsTracker.controllerName, nil)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressFirewallDNS, dnsTracker.controllerName, nil)
 	return libovsdbutil.DeleteAddrSetsWithoutACLRef(predicateIDs, nbClient)
 }

@@ -13,7 +13,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 )
@@ -93,7 +94,7 @@ func EnsureDHCPOptionsForLSP(controllerName string, nbClient libovsdbclient.Clie
 	if err != nil {
 		return fmt.Errorf("failed composing DHCP options: %v", err)
 	}
-	err = libovsdbops.CreateOrUpdateDhcpOptions(nbClient, lsp, dhcpConfigs.V4, dhcpConfigs.V6)
+	err = ovnops.CreateOrUpdateDhcpOptions(nbClient, lsp, dhcpConfigs.V4, dhcpConfigs.V6)
 	if err != nil {
 		return fmt.Errorf("failed creation or updating OVN operations to add DHCP options: %v", err)
 	}
@@ -170,10 +171,10 @@ func ComposeDHCPv6Options(cidr, controllerName string, vmKey ktypes.NamespacedNa
 }
 
 func composeDHCPOptions(controllerName string, vmKey ktypes.NamespacedName, dhcpOptions *nbdb.DHCPOptions) *nbdb.DHCPOptions {
-	dhcpvOptionsDbObjectID := libovsdbops.NewDbObjectIDs(libovsdbops.VirtualMachineDHCPOptions, controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: vmKey.String(),
-			libovsdbops.CIDRKey:       strings.ReplaceAll(dhcpOptions.Cidr, ":", "."),
+	dhcpvOptionsDbObjectID := ovsdbops.NewDbObjectIDs(ovsdbops.VirtualMachineDHCPOptions, controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: vmKey.String(),
+			ovsdbops.CIDRKey:       strings.ReplaceAll(dhcpOptions.Cidr, ":", "."),
 		})
 	dhcpOptions.ExternalIDs = dhcpvOptionsDbObjectID.GetExternalIDs()
 	dhcpOptions.ExternalIDs[OvnZoneExternalIDKey] = OvnLocalZone
@@ -185,8 +186,8 @@ func DeleteDHCPOptions(nbClient libovsdbclient.Client, pod *corev1.Pod) error {
 	if vmKey == nil {
 		return nil
 	}
-	if err := libovsdbops.DeleteDHCPOptionsWithPredicate(nbClient, func(item *nbdb.DHCPOptions) bool {
-		return item.ExternalIDs[string(libovsdbops.ObjectNameKey)] == vmKey.String()
+	if err := ovnops.DeleteDHCPOptionsWithPredicate(nbClient, func(item *nbdb.DHCPOptions) bool {
+		return item.ExternalIDs[string(ovsdbops.ObjectNameKey)] == vmKey.String()
 	}); err != nil {
 		return err
 	}

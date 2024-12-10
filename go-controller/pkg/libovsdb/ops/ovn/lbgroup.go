@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	libovsdb "github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -15,14 +16,14 @@ import (
 // provided load balancer group
 func CreateOrUpdateLoadBalancerGroupOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, group *nbdb.LoadBalancerGroup) ([]ovsdb.Operation, error) {
 	// lb group has no fields other than name, safe to update just with non-default values
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          group,
-		OnModelUpdates: onModelUpdatesAllNonDefault(),
+		OnModelUpdates: ovsdbops.OnModelUpdatesAllNonDefault(),
 		ErrNotFound:    false,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	ops, err := m.CreateOrUpdateOps(ops, opModel)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func AddLoadBalancersToGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.O
 	for _, lb := range lbs {
 		group.LoadBalancer = append(group.LoadBalancer, lb.UUID)
 	}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            group,
 		ModelPredicate:   func(item *nbdb.LoadBalancerGroup) bool { return item.Name == group.Name },
 		OnModelMutations: []interface{}{&group.LoadBalancer},
@@ -46,7 +47,7 @@ func AddLoadBalancersToGroupOps(nbClient libovsdbclient.Client, ops []libovsdb.O
 		BulkOp:           false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	ops, err := m.CreateOrUpdateOps(ops, opModel)
 	group.LoadBalancer = originalLBs
 	return ops, err
@@ -60,7 +61,7 @@ func RemoveLoadBalancersFromGroupOps(nbClient libovsdbclient.Client, ops []libov
 	for _, lb := range lbs {
 		group.LoadBalancer = append(group.LoadBalancer, lb.UUID)
 	}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:            group,
 		ModelPredicate:   func(item *nbdb.LoadBalancerGroup) bool { return item.Name == group.Name },
 		OnModelMutations: []interface{}{&group.LoadBalancer},
@@ -69,7 +70,7 @@ func RemoveLoadBalancersFromGroupOps(nbClient libovsdbclient.Client, ops []libov
 		BulkOp:      false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	ops, err := m.DeleteOps(ops, opModel)
 	group.LoadBalancer = originalLBs
 	return ops, err
