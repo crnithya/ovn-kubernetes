@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import (
 	"context"
@@ -23,7 +23,7 @@ type modelClient struct {
 	client client.Client
 }
 
-func newModelClient(client client.Client) modelClient {
+func NewModelClient(client client.Client) modelClient {
 	return modelClient{
 		client: client,
 	}
@@ -34,7 +34,7 @@ extractUUIDsFromModels is a helper function which constructs a mutation
 for the specified field and mutator extracting the UUIDs of the provided
 models as the value for the mutation.
 */
-func extractUUIDsFromModels(models interface{}) []string {
+func ExtractUUIDsFromModels(models interface{}) []string {
 	ids := []string{}
 	_ = onModels(models, func(model interface{}) error {
 		uuid := getUUID(model)
@@ -138,10 +138,10 @@ func buildMutationsFromFields(fields []interface{}, mutator ovsdb.Mutator) ([]mo
 }
 
 /*
-operationModel is a struct which uses reflection to determine and perform
+OperationModel is a struct which uses reflection to determine and perform
 idempotent operations against OVS DB (NB DB by default).
 */
-type operationModel struct {
+type OperationModel struct {
 	// Model specifies the model to be created, or to look up in the cache.
 	// The values in the fields of the Model are used for mutations and updates
 	// as well. If this Model is looked up or created, it will have its UUID set
@@ -176,11 +176,11 @@ type operationModel struct {
 	DoAfter func()
 }
 
-func onModelUpdatesNone() []interface{} {
+func OnModelUpdatesNone() []interface{} {
 	return nil
 }
 
-func onModelUpdatesAllNonDefault() []interface{} {
+func OnModelUpdatesAllNonDefault() []interface{} {
 	return []interface{}{}
 }
 
@@ -205,7 +205,7 @@ e) if none of the above are true, ErrNotFound is returned.
 
 If BulkOp is set, update or mutate can happen accross multiple models found.
 */
-func (m *modelClient) CreateOrUpdate(opModels ...operationModel) ([]ovsdb.OperationResult, error) {
+func (m *modelClient) CreateOrUpdate(opModels ...OperationModel) ([]ovsdb.OperationResult, error) {
 	created, ops, err := m.createOrUpdateOps(nil, opModels...)
 	if err != nil {
 		return nil, err
@@ -213,15 +213,15 @@ func (m *modelClient) CreateOrUpdate(opModels ...operationModel) ([]ovsdb.Operat
 	return TransactAndCheckAndSetUUIDs(m.client, created, ops)
 }
 
-func (m *modelClient) CreateOrUpdateOps(ops []ovsdb.Operation, opModels ...operationModel) ([]ovsdb.Operation, error) {
+func (m *modelClient) CreateOrUpdateOps(ops []ovsdb.Operation, opModels ...OperationModel) ([]ovsdb.Operation, error) {
 	_, ops, err := m.createOrUpdateOps(ops, opModels...)
 	return ops, err
 }
 
-func (m *modelClient) createOrUpdateOps(ops []ovsdb.Operation, opModels ...operationModel) (interface{}, []ovsdb.Operation, error) {
+func (m *modelClient) createOrUpdateOps(ops []ovsdb.Operation, opModels ...OperationModel) (interface{}, []ovsdb.Operation, error) {
 	hasGuardOp := len(ops) > 0 && isGuardOp(&ops[0])
 	guardOp := []ovsdb.Operation{}
-	doWhenFound := func(model interface{}, opModel *operationModel) (o []ovsdb.Operation, err error) {
+	doWhenFound := func(model interface{}, opModel *OperationModel) (o []ovsdb.Operation, err error) {
 		// nil represents onModelUpdatesNone
 		if opModel.OnModelUpdates != nil {
 			o, err = m.update(model, opModel)
@@ -235,7 +235,7 @@ func (m *modelClient) createOrUpdateOps(ops []ovsdb.Operation, opModels ...opera
 		}
 		return
 	}
-	doWhenNotFound := func(_ interface{}, opModel *operationModel) ([]ovsdb.Operation, error) {
+	doWhenNotFound := func(_ interface{}, opModel *OperationModel) ([]ovsdb.Operation, error) {
 		if !hasGuardOp {
 			// for the first insert of certain models, build a wait operation
 			// that checks for duplicates as a guard op to prevent against
@@ -272,7 +272,7 @@ c) if b) is not true; it performs a direct delete of the Model if it exists.
 
 If BulkOp is set, delete or mutate can happen accross multiple models found.
 */
-func (m *modelClient) Delete(opModels ...operationModel) error {
+func (m *modelClient) Delete(opModels ...OperationModel) error {
 	ops, err := m.DeleteOps(nil, opModels...)
 	if err != nil {
 		return err
@@ -281,8 +281,8 @@ func (m *modelClient) Delete(opModels ...operationModel) error {
 	return err
 }
 
-func (m *modelClient) DeleteOps(ops []ovsdb.Operation, opModels ...operationModel) ([]ovsdb.Operation, error) {
-	doWhenFound := func(model interface{}, opModel *operationModel) (o []ovsdb.Operation, err error) {
+func (m *modelClient) DeleteOps(ops []ovsdb.Operation, opModels ...OperationModel) ([]ovsdb.Operation, error) {
+	doWhenFound := func(model interface{}, opModel *OperationModel) (o []ovsdb.Operation, err error) {
 		if opModel.OnModelMutations != nil {
 			return m.mutate(model, opModel, ovsdb.MutateOperationDelete)
 		} else {
@@ -293,9 +293,9 @@ func (m *modelClient) DeleteOps(ops []ovsdb.Operation, opModels ...operationMode
 	return ops, err
 }
 
-type opModelToOpMapper func(model interface{}, opModel *operationModel) (o []ovsdb.Operation, err error)
+type opModelToOpMapper func(model interface{}, opModel *OperationModel) (o []ovsdb.Operation, err error)
 
-func (m *modelClient) buildOps(ops []ovsdb.Operation, doWhenFound opModelToOpMapper, doWhenNotFound opModelToOpMapper, opModels ...operationModel) (interface{}, []ovsdb.Operation, error) {
+func (m *modelClient) buildOps(ops []ovsdb.Operation, doWhenFound opModelToOpMapper, doWhenNotFound opModelToOpMapper, opModels ...OperationModel) (interface{}, []ovsdb.Operation, error) {
 	if ops == nil {
 		ops = []ovsdb.Operation{}
 	}
@@ -360,10 +360,10 @@ UUID (because if this function is called we know the item does not exists yet)
 then create the item. Generates an until clause and uses a wait operation to avoid
 https://bugzilla.redhat.com/show_bug.cgi?id=2042001
 */
-func (m *modelClient) create(opModel *operationModel) ([]ovsdb.Operation, error) {
+func (m *modelClient) create(opModel *OperationModel) ([]ovsdb.Operation, error) {
 	uuid := getUUID(opModel.Model)
 	if uuid == "" {
-		setUUID(opModel.Model, buildNamedUUID())
+		setUUID(opModel.Model, BuildNamedUUID())
 	}
 
 	ops, err := m.client.Create(opModel.Model)
@@ -375,7 +375,7 @@ func (m *modelClient) create(opModel *operationModel) ([]ovsdb.Operation, error)
 	return ops, nil
 }
 
-func (m *modelClient) update(lookUpModel interface{}, opModel *operationModel) (o []ovsdb.Operation, err error) {
+func (m *modelClient) update(lookUpModel interface{}, opModel *OperationModel) (o []ovsdb.Operation, err error) {
 	o, err = m.client.Where(lookUpModel).Update(opModel.Model, opModel.OnModelUpdates...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to update model, err: %w", err)
@@ -384,7 +384,7 @@ func (m *modelClient) update(lookUpModel interface{}, opModel *operationModel) (
 	return o, nil
 }
 
-func (m *modelClient) mutate(lookUpModel interface{}, opModel *operationModel, mutator ovsdb.Mutator) (o []ovsdb.Operation, err error) {
+func (m *modelClient) mutate(lookUpModel interface{}, opModel *OperationModel, mutator ovsdb.Mutator) (o []ovsdb.Operation, err error) {
 	if opModel.OnModelMutations == nil {
 		return nil, nil
 	}
@@ -409,7 +409,7 @@ func (m *modelClient) delete(lookUpModel interface{}) (o []ovsdb.Operation, err 
 	return o, nil
 }
 
-func (m *modelClient) Lookup(opModels ...operationModel) error {
+func (m *modelClient) Lookup(opModels ...OperationModel) error {
 	_, _, err := m.buildOps(nil, nil, nil, opModels...)
 	return err
 }
@@ -422,7 +422,7 @@ func (m *modelClient) Lookup(opModels ...operationModel) error {
 //
 // The allowed combination of operationModel fields is different for these cases.
 // Both Model db index, and ModelPredicate can only be empty for the first case
-func lookupRequired(opModel *operationModel) bool {
+func lookupRequired(opModel *OperationModel) bool {
 	// we know create is not supposed to be performed, if these fields are set
 	if opModel.BulkOp || opModel.ErrNotFound {
 		return true
@@ -434,7 +434,7 @@ func lookupRequired(opModel *operationModel) bool {
 // predicate
 // If lookup was successful, opModel.Model will have UUID set,
 // so that further user operations with the same model are indexed by UUID
-func (m *modelClient) lookup(opModel *operationModel) error {
+func (m *modelClient) lookup(opModel *OperationModel) error {
 	if opModel.ExistingResult == nil && opModel.Model != nil {
 		opModel.ExistingResult = getListFromModel(opModel.Model)
 	}
@@ -460,7 +460,7 @@ func (m *modelClient) lookup(opModel *operationModel) error {
 	return nil
 }
 
-func (m *modelClient) where(opModel *operationModel) error {
+func (m *modelClient) where(opModel *OperationModel) error {
 	copyModel := copyIndexes(opModel.Model)
 	if reflect.ValueOf(copyModel).Elem().IsZero() {
 		// no indexes available
@@ -485,7 +485,7 @@ func (m *modelClient) where(opModel *operationModel) error {
 	return err
 }
 
-func (m *modelClient) whereCache(opModel *operationModel) error {
+func (m *modelClient) whereCache(opModel *OperationModel) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.Default.OVSDBTxnTimeout)
 	defer cancel()
 	var err error

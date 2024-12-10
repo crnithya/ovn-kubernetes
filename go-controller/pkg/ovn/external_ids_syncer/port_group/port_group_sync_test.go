@@ -7,7 +7,8 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -17,7 +18,7 @@ import (
 
 type pgSync struct {
 	before     *nbdb.PortGroup
-	after      *libovsdbops.DbObjectIDs
+	after      *ovsdbops.DbObjectIDs
 	afterTweak func(group *nbdb.PortGroup)
 	remove     bool
 	leave      bool
@@ -115,7 +116,7 @@ func createInitialPG(hashedName, name, networkName string, portUUIDs, aclUUIDs [
 }
 
 func createReferencingACL(hashedName string, externalIDs map[string]string) *nbdb.ACL {
-	acl := libovsdbops.BuildACL(
+	acl := ovnops.BuildACL(
 		"",
 		nbdb.ACLDirectionToLport,
 		types.EgressFirewallStartPriority,
@@ -132,7 +133,7 @@ func createReferencingACL(hashedName string, externalIDs map[string]string) *nbd
 	return acl
 }
 
-func getUpdatedPG(pg *nbdb.PortGroup, dbIDs *libovsdbops.DbObjectIDs) *nbdb.PortGroup {
+func getUpdatedPG(pg *nbdb.PortGroup, dbIDs *ovsdbops.DbObjectIDs) *nbdb.PortGroup {
 	newPG := pg.DeepCopy()
 	newPG.UUID += "-new"
 
@@ -167,8 +168,8 @@ var _ = ginkgo.Describe("OVN Port Group Syncer", func() {
 					UUID: "pg1",
 					Name: hashedPG("as1"),
 					ExternalIDs: map[string]string{
-						libovsdbops.OwnerControllerKey.String(): anotherControllerName,
-						"name":                                  "pg_name"},
+						ovsdbops.OwnerControllerKey.String(): anotherControllerName,
+						"name":                               "pg_name"},
 				},
 				leave: true,
 			},
@@ -248,7 +249,7 @@ var _ = ginkgo.Describe("OVN Port Group Syncer", func() {
 			pgName := hashedPG(getNetworkScopedName(networkExternalID, namespaceName)) + "_" + egressDefaultDenySuffix
 			// default deny port group's namespace is extracted from the referencing acl
 			acl := createReferencingACL(pgName, map[string]string{
-				libovsdbops.ObjectNameKey.String(): namespaceName,
+				ovsdbops.ObjectNameKey.String(): namespaceName,
 			})
 			testData := []pgSync{
 				{
@@ -288,7 +289,7 @@ var _ = ginkgo.Describe("OVN Port Group Syncer", func() {
 				pgName := hashedPG(getNetworkScopedName(defaultNetworkExternalID, namespaceName)) + "_" + egressDefaultDenySuffix
 				// default deny port group's namespace is extracted from the referencing acl
 				acl := createReferencingACL(pgName, map[string]string{
-					libovsdbops.ObjectNameKey.String(): namespaceName,
+					ovsdbops.ObjectNameKey.String(): namespaceName,
 				})
 				testData = append(testData, pgSync{
 					before: createInitialPG(pgName, pgName, defaultNetworkExternalID,

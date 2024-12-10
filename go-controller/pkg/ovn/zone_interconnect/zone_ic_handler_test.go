@@ -17,7 +17,7 @@ import (
 
 	ovncnitypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/cni/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -113,7 +113,7 @@ func checkInterconnectResources(zone string, netName string, nbClient libovsdbcl
 		Name: getNetworkScopedName(netName, types.TransitSwitch),
 	}
 
-	ts, err := libovsdbops.GetLogicalSwitch(nbClient, &s)
+	ts, err := ovnops.GetLogicalSwitch(nbClient, &s)
 
 	if err != nil {
 		return fmt.Errorf("could not find transit switch %s in the nb db for network %s : err - %v", s.Name, netName, err)
@@ -137,7 +137,7 @@ func checkInterconnectResources(zone string, netName string, nbClient libovsdbcl
 			UUID: p,
 		}
 
-		lsp, err := libovsdbops.GetLogicalSwitchPort(nbClient, &lp)
+		lsp, err := ovnops.GetLogicalSwitchPort(nbClient, &lp)
 		if err != nil {
 			return fmt.Errorf("could not find logical switch port with uuid %s in the nb db for network %s : err - %v", p, netName, err)
 		}
@@ -173,7 +173,7 @@ func checkInterconnectResources(zone string, netName string, nbClient libovsdbcl
 		Name: getNetworkScopedName(netName, types.OVNClusterRouter),
 	}
 
-	clusterRouter, err := libovsdbops.GetLogicalRouter(nbClient, &r)
+	clusterRouter, err := ovnops.GetLogicalRouter(nbClient, &r)
 	if err != nil {
 		return fmt.Errorf("could not find cluster router %s in the nb db for network %s : err - %v", r.Name, netName, err)
 	}
@@ -187,7 +187,7 @@ func checkInterconnectResources(zone string, netName string, nbClient libovsdbcl
 			UUID: p,
 		}
 
-		lrp, err := libovsdbops.GetLogicalRouterPort(nbClient, &lp)
+		lrp, err := ovnops.GetLogicalRouterPort(nbClient, &lp)
 		if err != nil {
 			return fmt.Errorf("could not find logical router port with uuid %s in the nb db for network %s : err - %v", p, netName, err)
 		}
@@ -224,7 +224,7 @@ func checkInterconnectResources(zone string, netName string, nbClient libovsdbcl
 		newPredicate := func(item *nbdb.LogicalRouterStaticRoute) bool {
 			return item.UUID == srUUID
 		}
-		sr, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(nbClient, newPredicate)
+		sr, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(nbClient, newPredicate)
 		if err != nil {
 			return err
 		}
@@ -442,7 +442,7 @@ var _ = ginkgo.Describe("Zone Interconnect Operations", func() {
 				r := nbdb.LogicalRouter{
 					Name: getNetworkScopedName(types.DefaultNetworkName, types.OVNClusterRouter),
 				}
-				clusterRouter, err := libovsdbops.GetLogicalRouter(libovsdbOvnNBClient, &r)
+				clusterRouter, err := ovnops.GetLogicalRouter(libovsdbOvnNBClient, &r)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Make sure cluster router now has an static route for the remote node's ipv4 and ipv6
@@ -452,7 +452,7 @@ var _ = ginkgo.Describe("Zone Interconnect Operations", func() {
 					newPredicate := func(item *nbdb.LogicalRouterStaticRoute) bool {
 						return item.UUID == srUUID
 					}
-					sr, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(libovsdbOvnNBClient, newPredicate)
+					sr, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(libovsdbOvnNBClient, newPredicate)
 					gomega.Expect(err).NotTo(gomega.HaveOccurred())
 					gomega.Expect(sr).Should(gomega.HaveLen(1), "The static route should have been found by uuid")
 					if sr[0].IPPrefix == node3Ipv4SubnetPrefix && sr[0].Nexthop == node3TransitIpv4 {
@@ -790,7 +790,7 @@ var _ = ginkgo.Describe("Zone Interconnect Operations", func() {
 
 				// Create the cluster router
 				r := newOVNClusterRouter(types.DefaultNetworkName)
-				err = libovsdbops.CreateOrUpdateLogicalRouter(libovsdbOvnNBClient, r)
+				err = ovnops.CreateOrUpdateLogicalRouter(libovsdbOvnNBClient, r)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				err = zoneICHandler.AddLocalZoneNode(&testNode4)
@@ -887,7 +887,7 @@ var _ = ginkgo.Describe("Zone Interconnect Operations", func() {
 				// Create remote chassis
 				node4Chassis := &sbdb.Chassis{Name: "cb9ec8fa-b409-4ef3-9f42-d9283c47aac9", Hostname: "node4", UUID: "cb9ec8fa-b409-4ef3-9f42-d9283c47aac9"}
 				encap := &sbdb.Encap{ChassisName: node4Chassis.Name, IP: "10.0.0.12"}
-				err = libovsdbops.CreateOrUpdateChassis(libovsdbOvnSBClient, node4Chassis, encap)
+				err = ovnops.CreateOrUpdateChassis(libovsdbOvnSBClient, node4Chassis, encap)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				err = zoneICHandler.AddRemoteZoneNode(&testNode4)
@@ -900,7 +900,7 @@ var _ = ginkgo.Describe("Zone Interconnect Operations", func() {
 
 				// Create the cluster router
 				r := newOVNClusterRouter(types.DefaultNetworkName)
-				err = libovsdbops.CreateOrUpdateLogicalRouter(libovsdbOvnNBClient, r)
+				err = ovnops.CreateOrUpdateLogicalRouter(libovsdbOvnNBClient, r)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				err = zoneICHandler.AddRemoteZoneNode(&testNode4)
 				gomega.Expect(err).To(gomega.HaveOccurred(), "failed to parse node node4 GR IPs annotation")

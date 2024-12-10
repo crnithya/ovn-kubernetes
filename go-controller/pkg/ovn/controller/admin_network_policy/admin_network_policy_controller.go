@@ -24,7 +24,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/observability"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -597,7 +597,7 @@ func (c *Controller) onANPNodeDelete(obj interface{}) {
 	c.anpNodeQueue.Add(key)
 }
 
-func (c *Controller) GetSamplingConfig() *libovsdbops.SamplingConfig {
+func (c *Controller) GetSamplingConfig() *ovnops.SamplingConfig {
 	if c.observManager != nil {
 		return c.observManager.SamplingConfig()
 	}

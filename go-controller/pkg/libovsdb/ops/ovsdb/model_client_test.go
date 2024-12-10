@@ -1,4 +1,4 @@
-package ops
+package ovsdb
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ var (
 type OperationModelTestCase struct {
 	name           string
 	op             string
-	generateOp     func() []operationModel
+	generateOp     func() []OperationModel
 	interleaveOp   bool
 	initialDB      []libovsdbtest.TestData
 	expectedDB     []libovsdbtest.TestData
@@ -55,7 +55,7 @@ func runTestCase(t *testing.T, tCase OperationModelTestCase) error {
 	}
 	t.Cleanup(cleanup.Cleanup)
 
-	modelClient := newModelClient(nbClient)
+	modelClient := NewModelClient(nbClient)
 
 	opModels := tCase.generateOp()
 
@@ -131,8 +131,8 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing item by model predicate specification",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -152,8 +152,8 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing item by model",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -172,12 +172,12 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test update existing item by model predicate specification",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				model := nbdb.AddressSet{
 					Name:      adressSetTestName,
 					Addresses: []string{adressSetTestAdress},
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &model,
 						ModelPredicate: func(a *nbdb.AddressSet) bool { return a.Name == adressSetTestName },
@@ -204,12 +204,12 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test update existing item by model",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				model := nbdb.AddressSet{
 					Name:      adressSetTestName,
 					Addresses: []string{adressSetTestAdress},
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &model,
 						OnModelUpdates: []interface{}{
@@ -235,12 +235,12 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test create/update of non-existing item by model",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				model := nbdb.AddressSet{
 					Name:      adressSetTestName,
 					Addresses: []string{adressSetTestAdress},
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &model,
 						OnModelUpdates: []interface{}{
@@ -261,13 +261,13 @@ func TestCreateOrUpdateForRootObjects(t *testing.T) {
 		{
 			name: "Test setting of uuid of existing item to model when using model predicate",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
-				notTheUUIDWanted := buildNamedUUID()
+			generateOp: func() []OperationModel {
+				notTheUUIDWanted := BuildNamedUUID()
 				model := nbdb.AddressSet{
 					UUID: notTheUUIDWanted,
 					Name: adressSetTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &model,
 						ModelPredicate: func(a *nbdb.AddressSet) bool { return a.Name == adressSetTestName },
@@ -309,8 +309,8 @@ func TestDeleteForRootObjects(t *testing.T) {
 		{
 			name: "Test delete non-existing item by model predicate specification",
 			op:   "Delete",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -325,8 +325,8 @@ func TestDeleteForRootObjects(t *testing.T) {
 		{
 			name: "Test delete non-existing item by model specification",
 			op:   "Delete",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -340,8 +340,8 @@ func TestDeleteForRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing item by model predicate specification",
 			op:   "Delete",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -360,8 +360,8 @@ func TestDeleteForRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing item by model specification",
 			op:   "Delete",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -394,12 +394,12 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing no-root by model predicate specification and parent model mutation",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &m,
 						ModelPredicate: func(lsp *nbdb.LogicalSwitchPort) bool { return lsp.Name == logicalSwitchPortTestName },
@@ -435,12 +435,12 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing no-root by model predicate specification and non-existing parent model mutation",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &m,
 						ModelPredicate: func(lsp *nbdb.LogicalSwitchPort) bool { return lsp.Name == logicalSwitchPortTestName },
@@ -471,12 +471,12 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing no-root by model predicate specification and parent model update",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &m,
 						ModelPredicate: func(lsp *nbdb.LogicalSwitchPort) bool { return lsp.Name == logicalSwitchPortTestName },
@@ -512,14 +512,14 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing no-root by model and parent model mutate",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name: logicalSwitchPortTestName,
 				}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						DoAfter: func() {
@@ -555,14 +555,14 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test create non-existing no-root by model and parent model update",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name: logicalSwitchPortTestName,
 				}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						DoAfter: func() {
@@ -598,7 +598,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test update existing no-root by model update and parent model update",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				model := nbdb.LogicalSwitchPort{
 					Name:      logicalSwitchPortTestName,
 					Addresses: []string{logicalSwitchPortAddress},
@@ -606,7 +606,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &model,
 						OnModelUpdates: []interface{}{
@@ -651,7 +651,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test update existing no-root by model mutation and parent model update",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name:      logicalSwitchPortTestName,
 					Addresses: []string{logicalSwitchPortAddress},
@@ -659,7 +659,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 				pm := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						OnModelMutations: []interface{}{
@@ -704,13 +704,13 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test update existing no-root by model mutation and update on the same row",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name:        logicalSwitchPortTestName,
 					Addresses:   []string{logicalSwitchPortAddress2}, // to replace initial's column
 					ExternalIDs: map[string]string{"two": "2"},       // to be inserted to initial's column
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						OnModelMutations: []interface{}{
@@ -752,7 +752,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test update non-existing no-root by model mutation and parent model mutation",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name:      logicalSwitchPortTestName,
 					Addresses: []string{logicalSwitchPortAddress},
@@ -760,7 +760,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 				pm := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						OnModelMutations: []interface{}{
@@ -800,7 +800,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test update existing no-root by model specification and parent model mutation without specifying direct ID",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name:      logicalSwitchPortTestName,
 					Addresses: []string{logicalSwitchPortAddress},
@@ -808,7 +808,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						OnModelUpdates: []interface{}{
@@ -853,7 +853,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 		{
 			name: "Test no update of existing non-root object by model specification and parent model mutation without specifying direct ID",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name:      logicalSwitchPortTestName,
 					Addresses: []string{logicalSwitchPortAddress},
@@ -861,7 +861,7 @@ func TestCreateOrUpdateForNonRootObjects(t *testing.T) {
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						DoAfter: func() {
@@ -913,12 +913,12 @@ func TestDeleteForNonRootObjects(t *testing.T) {
 		{
 			name: "Test delete non-existing no-root by model predicate specification and parent model mutation",
 			op:   "Delete",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				parentModel := nbdb.LogicalSwitch{
 					Name:  logicalSwitchTestName,
 					Ports: []string{logicalSwitchPortTestUUID},
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model:          &nbdb.LogicalSwitchPort{},
 						ModelPredicate: func(lsp *nbdb.LogicalSwitchPort) bool { return lsp.Name == logicalSwitchPortTestName },
@@ -947,17 +947,17 @@ func TestDeleteForNonRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing no-root by model predicate specification and parent model mutation",
 			op:   "Delete",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
 				logicalSwitchPortRes := []nbdb.LogicalSwitchPort{}
-				return []operationModel{
+				return []OperationModel{
 					{
 						ModelPredicate: func(lsp *nbdb.LogicalSwitchPort) bool { return lsp.Name == logicalSwitchPortTestName },
 						ExistingResult: &logicalSwitchPortRes,
 						DoAfter: func() {
-							parentModel.Ports = extractUUIDsFromModels(&logicalSwitchPortRes)
+							parentModel.Ports = ExtractUUIDsFromModels(&logicalSwitchPortRes)
 						},
 					},
 					{
@@ -989,14 +989,14 @@ func TestDeleteForNonRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing no-root by model specification and parent model mutation without specifying direct ID",
 			op:   "Delete",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name: logicalSwitchPortTestName,
 				}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						DoAfter: func() {
@@ -1032,17 +1032,17 @@ func TestDeleteForNonRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing non-root by model specification and parent model mutation without predicate",
 			op:   "Delete",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				parentModel := nbdb.PortGroup{
 					Name: portGroupTestName,
 				}
 				aclRes := []nbdb.ACL{}
-				return []operationModel{
+				return []OperationModel{
 					{
 						ModelPredicate: func(acl *nbdb.ACL) bool { return acl.Action == nbdb.ACLActionAllow },
 						ExistingResult: &aclRes,
 						DoAfter: func() {
-							parentModel.ACLs = extractUUIDsFromModels(&aclRes)
+							parentModel.ACLs = ExtractUUIDsFromModels(&aclRes)
 						},
 					},
 					{
@@ -1074,14 +1074,14 @@ func TestDeleteForNonRootObjects(t *testing.T) {
 		{
 			name: "Test delete existing no-root by model specification and parent model mutation with empty ID slice",
 			op:   "Delete",
-			generateOp: func() []operationModel {
+			generateOp: func() []OperationModel {
 				m := nbdb.LogicalSwitchPort{
 					Name: logicalSwitchPortTestName,
 				}
 				parentModel := nbdb.LogicalSwitch{
 					Name: logicalSwitchTestName,
 				}
-				return []operationModel{
+				return []OperationModel{
 					{
 						Model: &m,
 						DoAfter: func() {
@@ -1125,8 +1125,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by index over predicate",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -1156,8 +1156,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by UUID over predicate",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							UUID: lookupUUID,
@@ -1187,8 +1187,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by index not found error",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName + "-not-found",
@@ -1210,8 +1210,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by index not found no error",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName + "-not-found",
@@ -1234,8 +1234,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate no indexes",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model:          &nbdb.AddressSet{},
 						ModelPredicate: func(item *nbdb.AddressSet) bool { return item.Name == adressSetTestName },
@@ -1263,8 +1263,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup with index provided doesn't use predicate",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName + "-not-found",
@@ -1287,8 +1287,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate not found error",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						ModelPredicate: func(*nbdb.AddressSet) bool { return false },
 						ExistingResult: &[]*nbdb.AddressSet{},
@@ -1308,8 +1308,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate not found no error",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						ModelPredicate: func(*nbdb.AddressSet) bool { return false },
 						ExistingResult: &[]*nbdb.AddressSet{},
@@ -1329,8 +1329,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by index when bulk op",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.AddressSet{
 							Name: adressSetTestName,
@@ -1362,8 +1362,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate when bulk op",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model:          &nbdb.AddressSet{},
 						ModelPredicate: func(item *nbdb.AddressSet) bool { return item.Name == adressSetTestName },
@@ -1393,8 +1393,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate bulk op multiple results",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						ModelPredicate: func(*nbdb.AddressSet) bool { return true },
 						ExistingResult: &[]*nbdb.AddressSet{},
@@ -1431,8 +1431,8 @@ func TestLookup(t *testing.T) {
 		{
 			name: "Test lookup by predicate multiple results error no bulk op",
 			op:   "Lookup",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						ModelPredicate: func(*nbdb.AddressSet) bool { return true },
 						ExistingResult: &[]*nbdb.AddressSet{},
@@ -1591,8 +1591,8 @@ func TestWaitForDuplicates(t *testing.T) {
 		{
 			name: "Test non-root model transaction fails when duplicate",
 			op:   "CreateOrUpdate",
-			generateOp: func() []operationModel {
-				return []operationModel{
+			generateOp: func() []OperationModel {
+				return []OperationModel{
 					{
 						Model: &nbdb.LogicalSwitch{
 							Name: logicalSwitchTestName,

@@ -9,12 +9,12 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 )
 
-func getDbAddrSets(dbIDs *libovsdbops.DbObjectIDs, ipFamily string, ips []string) *nbdb.AddressSet {
+func getDbAddrSets(dbIDs *ovsdbops.DbObjectIDs, ipFamily string, ips []string) *nbdb.AddressSet {
 	asv4, asv6 := GetTestDbAddrSets(dbIDs, ips)
 	if ipFamily == ipv4InternalID {
 		asv4.UUID = asv4.Name + "-UUID"
@@ -25,20 +25,20 @@ func getDbAddrSets(dbIDs *libovsdbops.DbObjectIDs, ipFamily string, ips []string
 	}
 }
 
-func getDbAsV4(dbIDs *libovsdbops.DbObjectIDs, ips []string) *nbdb.AddressSet {
+func getDbAsV4(dbIDs *ovsdbops.DbObjectIDs, ips []string) *nbdb.AddressSet {
 	return getDbAddrSets(dbIDs, ipv4InternalID, ips)
 }
 
-func getDbAsWithUUID(dbIDs *libovsdbops.DbObjectIDs, ips []string, UUID string, ipFamily string) *nbdb.AddressSet {
+func getDbAsWithUUID(dbIDs *ovsdbops.DbObjectIDs, ips []string, UUID string, ipFamily string) *nbdb.AddressSet {
 	as := getDbAddrSets(dbIDs, ipFamily, ips)
 	as.UUID = UUID
 	return as
 }
 
-func getNamespaceAddrSetDbIDs(namespaceName, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, controller, map[libovsdbops.ExternalIDKey]string{
+func getNamespaceAddrSetDbIDs(namespaceName, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, controller, map[ovsdbops.ExternalIDKey]string{
 		// namespace has only 1 address set, no additional ids are required
-		libovsdbops.ObjectNameKey: namespaceName,
+		ovsdbops.ObjectNameKey: namespaceName,
 	})
 }
 
@@ -86,28 +86,28 @@ var _ = ginkgo.Describe("OVN Address Set operations", func() {
 					&nbdb.AddressSet{
 						Name: "1",
 						ExternalIDs: map[string]string{
-							libovsdbops.OwnerControllerKey.String(): controllerName,
-							libovsdbops.OwnerTypeKey.String():       string(libovsdbops.NamespaceOwnerType),
+							ovsdbops.OwnerControllerKey.String(): controllerName,
+							ovsdbops.OwnerTypeKey.String():       string(ovsdbops.NamespaceOwnerType),
 						},
 					},
 					&nbdb.AddressSet{
 						Name: "2",
 						ExternalIDs: map[string]string{
-							libovsdbops.OwnerControllerKey.String(): controllerName,
-							libovsdbops.OwnerTypeKey.String():       string(libovsdbops.NamespaceOwnerType),
-							libovsdbops.ObjectNameKey.String():      "ns",
+							ovsdbops.OwnerControllerKey.String(): controllerName,
+							ovsdbops.OwnerTypeKey.String():       string(ovsdbops.NamespaceOwnerType),
+							ovsdbops.ObjectNameKey.String():      "ns",
 						},
 					},
 					// another controller name, won't be handled
 					&nbdb.AddressSet{
 						Name:        "3",
-						ExternalIDs: map[string]string{libovsdbops.OwnerControllerKey.String(): "other-controller"},
+						ExternalIDs: map[string]string{ovsdbops.OwnerControllerKey.String(): "other-controller"},
 					},
 					// no OwnerTypeKey, won't be handled
 					&nbdb.AddressSet{
 						Name: "4",
 						ExternalIDs: map[string]string{
-							libovsdbops.OwnerControllerKey.String(): controllerName,
+							ovsdbops.OwnerControllerKey.String(): controllerName,
 						},
 					},
 				}
@@ -118,14 +118,14 @@ var _ = ginkgo.Describe("OVN Address Set operations", func() {
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				asFactory = NewOvnAddressSetFactory(nbClient, config.IPv4Mode, config.IPv6Mode)
 
-				expectedIndexes := map[string]*libovsdbops.DbObjectIDs{
-					"":   libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, controllerName, nil),
+				expectedIndexes := map[string]*ovsdbops.DbObjectIDs{
+					"":   ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, controllerName, nil),
 					"ns": getNamespaceAddrSetDbIDs("ns", controllerName),
 				}
-				handledIndexes := map[string]*libovsdbops.DbObjectIDs{}
-				_ = asFactory.ProcessEachAddressSet(controllerName, libovsdbops.AddressSetNamespace,
-					func(dbIDs *libovsdbops.DbObjectIDs) error {
-						handledIndexes[dbIDs.GetObjectID(libovsdbops.ObjectNameKey)] = dbIDs
+				handledIndexes := map[string]*ovsdbops.DbObjectIDs{}
+				_ = asFactory.ProcessEachAddressSet(controllerName, ovsdbops.AddressSetNamespace,
+					func(dbIDs *ovsdbops.DbObjectIDs) error {
+						handledIndexes[dbIDs.GetObjectID(ovsdbops.ObjectNameKey)] = dbIDs
 						return nil
 					})
 				gomega.Expect(handledIndexes).To(gomega.BeEquivalentTo(expectedIndexes))

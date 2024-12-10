@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 )
 
@@ -33,14 +34,14 @@ func ListChassisPrivate(sbClient libovsdbclient.Client) ([]*sbdb.ChassisPrivate,
 // column.
 func GetChassis(sbClient libovsdbclient.Client, chassis *sbdb.Chassis) (*sbdb.Chassis, error) {
 	found := []*sbdb.Chassis{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          chassis,
 		ExistingResult: &found,
 		ErrNotFound:    true,
 		BulkOp:         false,
 	}
 
-	m := newModelClient(sbClient)
+	m := ovsdbops.NewModelClient(sbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -51,14 +52,14 @@ func GetChassis(sbClient libovsdbclient.Client, chassis *sbdb.Chassis) (*sbdb.Ch
 
 // DeleteChassis deletes the provided chassis and associated private chassis
 func DeleteChassis(sbClient libovsdbclient.Client, chassis ...*sbdb.Chassis) error {
-	opModels := make([]operationModel, 0, len(chassis))
+	opModels := make([]ovsdbops.OperationModel, 0, len(chassis))
 	for i := range chassis {
 		foundChassis := []*sbdb.Chassis{}
 		chassisPrivate := sbdb.ChassisPrivate{
 			Name: chassis[i].Name,
 		}
 		chassisUUID := ""
-		opModel := []operationModel{
+		opModel := []ovsdbops.OperationModel{
 			{
 				Model:          chassis[i],
 				ExistingResult: &foundChassis,
@@ -90,7 +91,7 @@ func DeleteChassis(sbClient libovsdbclient.Client, chassis ...*sbdb.Chassis) err
 		opModels = append(opModels, opModel...)
 	}
 
-	m := newModelClient(sbClient)
+	m := ovsdbops.NewModelClient(sbClient)
 	err := m.Delete(opModels...)
 	return err
 }
@@ -103,7 +104,7 @@ func DeleteChassisWithPredicate(sbClient libovsdbclient.Client, p chassisPredica
 	foundChassis := []*sbdb.Chassis{}
 	foundChassisNames := sets.NewString()
 	foundChassisUUIDS := sets.NewString()
-	opModels := []operationModel{
+	opModels := []ovsdbops.OperationModel{
 		{
 			Model:          &sbdb.Chassis{},
 			ModelPredicate: p,
@@ -132,21 +133,21 @@ func DeleteChassisWithPredicate(sbClient libovsdbclient.Client, p chassisPredica
 			BulkOp:         true,
 		},
 	}
-	m := newModelClient(sbClient)
+	m := ovsdbops.NewModelClient(sbClient)
 	err := m.Delete(opModels...)
 	return err
 }
 
 // CreateOrUpdateChassis creates or updates the chassis record along with the encap record
 func CreateOrUpdateChassis(sbClient libovsdbclient.Client, chassis *sbdb.Chassis, encap *sbdb.Encap) error {
-	m := newModelClient(sbClient)
-	opModels := []operationModel{
+	m := ovsdbops.NewModelClient(sbClient)
+	opModels := []ovsdbops.OperationModel{
 		{
 			Model: encap,
 			DoAfter: func() {
 				chassis.Encaps = []string{encap.UUID}
 			},
-			OnModelUpdates: onModelUpdatesAllNonDefault(),
+			OnModelUpdates: ovsdbops.OnModelUpdatesAllNonDefault(),
 			ErrNotFound:    false,
 			BulkOp:         false,
 		},

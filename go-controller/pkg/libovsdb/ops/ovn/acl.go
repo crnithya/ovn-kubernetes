@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -37,13 +38,13 @@ func FindACLsWithPredicate(nbClient libovsdbclient.Client, p aclPredicate) ([]*n
 }
 
 func FindACLs(nbClient libovsdbclient.Client, acls []*nbdb.ACL) ([]*nbdb.ACL, error) {
-	opModels := make([]operationModel, 0, len(acls))
+	opModels := make([]ovsdbops.OperationModel, 0, len(acls))
 	foundACLs := make([]*nbdb.ACL, 0, len(acls))
 	for i := range acls {
 		// can't use i in the predicate, for loop replaces it in-memory
 		acl := acls[i]
 		found := []*nbdb.ACL{}
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          acl,
 			ExistingResult: &found,
 			ErrNotFound:    false,
@@ -57,7 +58,7 @@ func FindACLs(nbClient libovsdbclient.Client, acls []*nbdb.ACL) ([]*nbdb.ACL, er
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	err := modelClient.Lookup(opModels...)
 	return foundACLs, err
 }
@@ -108,7 +109,8 @@ func SetACLLogging(acl *nbdb.ACL, severity nbdb.ACLSeverity, log bool) {
 // CreateOrUpdateACLsOps creates or updates the provided ACLs returning the
 // corresponding ops
 func CreateOrUpdateACLsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, samplingConfig *SamplingConfig, acls ...*nbdb.ACL) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(acls))
+	opModels := make([]ovsdbops.OperationModel, 0, len(acls))
+
 	for i := range acls {
 		// can't use i in the predicate, for loop replaces it in-memory
 		acl := acls[i]
@@ -118,7 +120,7 @@ func CreateOrUpdateACLsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation
 			*acl.Name = fmt.Sprintf("%.63s", *acl.Name)
 		}
 		opModels = addSample(samplingConfig, opModels, acl)
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          acl,
 			OnModelUpdates: getACLMutableFields(acl),
 			ErrNotFound:    false,
@@ -127,16 +129,16 @@ func CreateOrUpdateACLsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
 func UpdateACLsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, acls ...*nbdb.ACL) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(acls))
+	opModels := make([]ovsdbops.OperationModel, 0, len(acls))
 	for i := range acls {
 		// can't use i in the predicate, for loop replaces it in-memory
 		acl := acls[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          acl,
 			OnModelUpdates: getACLMutableFields(acl),
 			ErrNotFound:    true,
@@ -145,7 +147,7 @@ func UpdateACLsOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, acls .
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
@@ -156,18 +158,18 @@ func CreateOrUpdateACLs(nbClient libovsdbclient.Client, samplingConfig *Sampling
 		return err
 	}
 
-	_, err = TransactAndCheckAndSetUUIDs(nbClient, acls, ops)
+	_, err = ovsdbops.TransactAndCheckAndSetUUIDs(nbClient, acls, ops)
 	return err
 }
 
 // UpdateACLsLoggingOps updates the log and severity on the provided ACLs and
 // returns the corresponding ops
 func UpdateACLsLoggingOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, acls ...*nbdb.ACL) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(acls))
+	opModels := make([]ovsdbops.OperationModel, 0, len(acls))
 	for i := range acls {
 		// can't use i in the predicate, for loop replaces it in-memory
 		acl := acls[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          acl,
 			OnModelUpdates: []interface{}{&acl.Severity, &acl.Log},
 			ErrNotFound:    true,
@@ -176,6 +178,6 @@ func UpdateACLsLoggingOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation,
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }

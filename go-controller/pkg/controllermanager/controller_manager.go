@@ -19,7 +19,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
@@ -117,7 +118,7 @@ func findAllSecondaryNetworkLogicalEntities(nbClient libovsdbclient.Client) ([]*
 	p1 := func(item *nbdb.LogicalSwitch) bool {
 		return belongsToSecondaryNetwork(item.ExternalIDs)
 	}
-	nodeSwitches, err := libovsdbops.FindLogicalSwitchesWithPredicate(nbClient, p1)
+	nodeSwitches, err := ovnops.FindLogicalSwitchesWithPredicate(nbClient, p1)
 	if err != nil {
 		klog.Errorf("Failed to get all logical switches of secondary network error: %v", err)
 		return nil, nil, err
@@ -125,7 +126,7 @@ func findAllSecondaryNetworkLogicalEntities(nbClient libovsdbclient.Client) ([]*
 	p2 := func(item *nbdb.LogicalRouter) bool {
 		return belongsToSecondaryNetwork(item.ExternalIDs)
 	}
-	clusterRouters, err := libovsdbops.FindLogicalRoutersWithPredicate(nbClient, p2)
+	clusterRouters, err := ovnops.FindLogicalRoutersWithPredicate(nbClient, p2)
 	if err != nil {
 		klog.Errorf("Failed to get all distributed logical routers: %v", err)
 		return nil, nil, err
@@ -280,7 +281,7 @@ func (cm *ControllerManager) createACLLoggingMeter() error {
 		Action: ovntypes.MeterAction,
 		Rate:   config.Logging.ACLLoggingRateLimit,
 	}
-	ops, err := libovsdbops.CreateMeterBandOps(cm.nbClient, nil, band)
+	ops, err := ovnops.CreateMeterBandOps(cm.nbClient, nil, band)
 	if err != nil {
 		return fmt.Errorf("can't create meter band %v: %v", band, err)
 	}
@@ -291,13 +292,13 @@ func (cm *ControllerManager) createACLLoggingMeter() error {
 		Fair: &meterFairness,
 		Unit: ovntypes.PacketsPerSecond,
 	}
-	ops, err = libovsdbops.CreateOrUpdateMeterOps(cm.nbClient, ops, meter, []*nbdb.MeterBand{band},
+	ops, err = ovnops.CreateOrUpdateMeterOps(cm.nbClient, ops, meter, []*nbdb.MeterBand{band},
 		&meter.Bands, &meter.Fair, &meter.Unit)
 	if err != nil {
 		return fmt.Errorf("can't create meter %v: %v", meter, err)
 	}
 
-	_, err = libovsdbops.TransactAndCheck(cm.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(cm.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("can't transact ACL logging meter: %v", err)
 	}

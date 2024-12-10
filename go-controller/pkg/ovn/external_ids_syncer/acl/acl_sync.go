@@ -16,7 +16,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -65,8 +66,8 @@ func NewACLSyncer(nbClient libovsdbclient.Client, controllerName string) *ACLSyn
 
 func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 	// stale acls don't have controller ID
-	legacyAclPred := libovsdbops.GetNoOwnerPredicate[*nbdb.ACL]()
-	legacyACLs, err := libovsdbops.FindACLsWithPredicate(syncer.nbClient, legacyAclPred)
+	legacyAclPred := ovsdbops.GetNoOwnerPredicate[*nbdb.ACL]()
+	legacyACLs, err := ovnops.FindACLsWithPredicate(syncer.nbClient, legacyAclPred)
 	if err != nil {
 		return fmt.Errorf("unable to find stale ACLs, cannot update stale data: %v", err)
 	}
@@ -100,7 +101,7 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 		updatedACLs = append(updatedACLs, egressFirewallACLs...)
 
 		// delete stale duplicating acls first
-		_, err = libovsdbops.TransactAndCheck(syncer.nbClient, deleteACLs)
+		_, err = ovsdbops.TransactAndCheck(syncer.nbClient, deleteACLs)
 		if err != nil {
 			return fmt.Errorf("faile to trasact db ops: %v", err)
 		}
@@ -108,9 +109,9 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 		// make sure there is only 1 ACL with any given primary ID
 		// 1. collect all existing primary IDs via predicate that will update IDs set, but always return false
 		existingACLPrimaryIDs := sets.Set[string]{}
-		_, err = libovsdbops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
-			if acl.ExternalIDs[libovsdbops.PrimaryIDKey.String()] != "" {
-				existingACLPrimaryIDs.Insert(acl.ExternalIDs[libovsdbops.PrimaryIDKey.String()])
+		_, err = ovnops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
+			if acl.ExternalIDs[ovsdbops.PrimaryIDKey.String()] != "" {
+				existingACLPrimaryIDs.Insert(acl.ExternalIDs[ovsdbops.PrimaryIDKey.String()])
 			}
 			return false
 		})
@@ -120,7 +121,7 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 		// 2. Check to-be-updated ACLs don't have the same PrimaryID between themselves and with the existingACLPrimaryIDs
 		uniquePrimaryIDACLs := []*nbdb.ACL{}
 		for _, acl := range updatedACLs {
-			primaryID := acl.ExternalIDs[libovsdbops.PrimaryIDKey.String()]
+			primaryID := acl.ExternalIDs[ovsdbops.PrimaryIDKey.String()]
 			if existingACLPrimaryIDs.Has(primaryID) {
 				// don't update that acl, otherwise 2 ACLs with the same primary ID will be in the db
 				klog.Warningf("Skip updating ACL %+v to the new ExternalIDs, since there is another ACL with the same primary ID", acl)
@@ -132,7 +133,7 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 
 		// update acls with new ExternalIDs
 		err = batching.Batch[*nbdb.ACL](syncer.txnBatchSize, uniquePrimaryIDACLs, func(batchACLs []*nbdb.ACL) error {
-			return libovsdbops.CreateOrUpdateACLs(syncer.nbClient, nil, batchACLs...)
+			return ovnops.CreateOrUpdateACLs(syncer.nbClient, nil, batchACLs...)
 		})
 		if err != nil {
 			return fmt.Errorf("cannot update stale ACLs: %v", err)
@@ -141,16 +142,16 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 		// There may be very old acls that are not selected by any of the syncers, delete them.
 		// One example is stale multicast ACLs with the old priority that was accidentally changed by
 		// https://github.com/ovn-org/ovn-kubernetes/commit/f68d302664e64093c867c0b9efe08d1d757d6780#diff-cc83e19af1c257d5a09b711d5977d8f8c20beb34b7b5d3eb37b2f2c53ded1bf7L537-R462
-		leftoverACLs, err := libovsdbops.FindACLsWithPredicate(syncer.nbClient, legacyAclPred)
+		leftoverACLs, err := ovnops.FindACLsWithPredicate(syncer.nbClient, legacyAclPred)
 		if err != nil {
 			return fmt.Errorf("unable to find leftover ACLs, cannot update stale data: %v", err)
 		}
 		p := func(_ *nbdb.LogicalSwitch) bool { return true }
-		err = libovsdbops.RemoveACLsFromLogicalSwitchesWithPredicate(syncer.nbClient, p, leftoverACLs...)
+		err = ovnops.RemoveACLsFromLogicalSwitchesWithPredicate(syncer.nbClient, p, leftoverACLs...)
 		if err != nil {
 			return fmt.Errorf("unable delete leftover ACLs from switches: %v", err)
 		}
-		err = libovsdbops.DeleteACLsFromAllPortGroups(syncer.nbClient, leftoverACLs...)
+		err = ovnops.DeleteACLsFromAllPortGroups(syncer.nbClient, leftoverACLs...)
 		if err != nil {
 			return fmt.Errorf("unable delete leftover ACLs from port groups: %v", err)
 		}
@@ -170,7 +171,7 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 	aclPred := func(item *nbdb.ACL) bool {
 		return item.Tier == types.PrimaryACLTier
 	}
-	aclsInTier0, err := libovsdbops.FindACLsWithPredicate(syncer.nbClient, aclPred)
+	aclsInTier0, err := ovnops.FindACLsWithPredicate(syncer.nbClient, aclPred)
 	if err != nil {
 		return fmt.Errorf("unable to fetch Tier0 ACLs: %v", err)
 	}
@@ -184,7 +185,7 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 		}
 		// batch ACLs together in order of their priority: lowest first and then highest
 		err = batching.Batch[*nbdb.ACL](syncer.txnBatchSize, aclsInTier0, func(batchACLs []*nbdb.ACL) error {
-			return libovsdbops.CreateOrUpdateACLs(syncer.nbClient, nil, batchACLs...)
+			return ovnops.CreateOrUpdateACLs(syncer.nbClient, nil, batchACLs...)
 		})
 		if err != nil {
 			return fmt.Errorf("cannot update ACLs to tier2: %v", err)
@@ -194,24 +195,24 @@ func (syncer *ACLSyncer) SyncACLs(existingNodes []*corev1.Node) error {
 	return nil
 }
 
-func (syncer *ACLSyncer) getDefaultMcastACLDbIDs(mcastType, policyDirection string) *libovsdbops.DbObjectIDs {
+func (syncer *ACLSyncer) getDefaultMcastACLDbIDs(mcastType, policyDirection string) *ovsdbops.DbObjectIDs {
 	// there are 2 types of default multicast ACLs in every direction (Ingress/Egress)
 	// DefaultDeny = deny multicast by default
 	// AllowInterNode = allow inter-node multicast
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastCluster, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.TypeKey:            mcastType,
-			libovsdbops.PolicyDirectionKey: policyDirection,
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastCluster, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.TypeKey:            mcastType,
+			ovsdbops.PolicyDirectionKey: policyDirection,
 		})
 
 }
 
-func (syncer *ACLSyncer) getNamespaceMcastACLDbIDs(ns, policyDirection string) *libovsdbops.DbObjectIDs {
+func (syncer *ACLSyncer) getNamespaceMcastACLDbIDs(ns, policyDirection string) *ovsdbops.DbObjectIDs {
 	// namespaces ACL
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLMulticastNamespace, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey:      ns,
-			libovsdbops.PolicyDirectionKey: policyDirection,
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLMulticastNamespace, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey:      ns,
+			ovsdbops.PolicyDirectionKey: policyDirection,
 		})
 }
 
@@ -220,7 +221,7 @@ func (syncer *ACLSyncer) getNamespaceMcastACLDbIDs(ns, policyDirection string) *
 func (syncer *ACLSyncer) updateStaleMulticastACLsDbIDs(legacyACLs []*nbdb.ACL) []*nbdb.ACL {
 	updatedACLs := []*nbdb.ACL{}
 	for _, acl := range legacyACLs {
-		var dbIDs *libovsdbops.DbObjectIDs
+		var dbIDs *ovsdbops.DbObjectIDs
 		if acl.Priority == types.DefaultMcastDenyPriority {
 			// there is only 1 type acl type with this priority: default deny
 			dbIDs = syncer.getDefaultMcastACLDbIDs(mcastDefaultDenyID, acl.ExternalIDs[defaultDenyPolicyTypeACLExtIdKey])
@@ -236,7 +237,7 @@ func (syncer *ACLSyncer) updateStaleMulticastACLsDbIDs(legacyACLs []*nbdb.ACL) [
 					// namespace allow ingress
 					// acl Name can be truncated (max length 64), but k8s namespace is limited to 63 symbols,
 					// therefore it is safe to extract it from the name
-					ns := strings.Split(libovsdbops.GetACLName(acl), "_")[0]
+					ns := strings.Split(ovnops.GetACLName(acl), "_")[0]
 					dbIDs = syncer.getNamespaceMcastACLDbIDs(ns, string(knet.PolicyTypeIngress))
 				}
 			} else if acl.ExternalIDs[defaultDenyPolicyTypeACLExtIdKey] == string(knet.PolicyTypeEgress) {
@@ -249,7 +250,7 @@ func (syncer *ACLSyncer) updateStaleMulticastACLsDbIDs(legacyACLs []*nbdb.ACL) [
 					// namespace allow egress
 					// acl Name can be truncated (max length 64), but k8s namespace is limited to 63 symbols,
 					// therefore it is safe to extract it from the name
-					ns := strings.Split(libovsdbops.GetACLName(acl), "_")[0]
+					ns := strings.Split(ovnops.GetACLName(acl), "_")[0]
 					dbIDs = syncer.getNamespaceMcastACLDbIDs(ns, string(knet.PolicyTypeEgress))
 				}
 			} else {
@@ -269,11 +270,11 @@ func (syncer *ACLSyncer) updateStaleMulticastACLsDbIDs(legacyACLs []*nbdb.ACL) [
 	return updatedACLs
 }
 
-func (syncer *ACLSyncer) getAllowFromNodeACLDbIDs(nodeName, mgmtPortIP string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLNetpolNode, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: nodeName,
-			libovsdbops.IpKey:         mgmtPortIP,
+func (syncer *ACLSyncer) getAllowFromNodeACLDbIDs(nodeName, mgmtPortIP string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLNetpolNode, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: nodeName,
+			ovsdbops.IpKey:         mgmtPortIP,
 		})
 }
 
@@ -322,15 +323,15 @@ func (syncer *ACLSyncer) updateStaleNetpolNodeACLs(legacyACLs []*nbdb.ACL, exist
 }
 
 func (syncer *ACLSyncer) getNetpolGressACLDbIDs(policyNamespace, policyName, policyType string,
-	gressIdx, portPolicyIdx, ipBlockIdx int) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLNetworkPolicyPortIndex, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
+	gressIdx, portPolicyIdx, ipBlockIdx int) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLNetworkPolicyPortIndex, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
 			// policy namespace+name
-			libovsdbops.ObjectNameKey: policyNamespace + ":" + policyName,
+			ovsdbops.ObjectNameKey: policyNamespace + ":" + policyName,
 			// egress or ingress
-			libovsdbops.PolicyDirectionKey: policyType,
+			ovsdbops.PolicyDirectionKey: policyType,
 			// gress rule index
-			libovsdbops.GressIdxKey: strconv.Itoa(gressIdx),
+			ovsdbops.GressIdxKey: strconv.Itoa(gressIdx),
 			// acls are created for every gp.portPolicies:
 			// - for empty policy (no selectors and no ip blocks) - empty ACL
 			// OR
@@ -338,8 +339,8 @@ func (syncer *ACLSyncer) getNetpolGressACLDbIDs(policyNamespace, policyName, pol
 			// - for every IPBlock +1 ACL
 			// Therefore unique id for given gressPolicy is portPolicy idx + IPBlock idx
 			// (empty policy and all selector-based peers ACLs will have idx=-1)
-			libovsdbops.PortPolicyIndexKey: strconv.Itoa(portPolicyIdx),
-			libovsdbops.IpBlockIndexKey:    strconv.Itoa(ipBlockIdx),
+			ovsdbops.PortPolicyIndexKey: strconv.Itoa(portPolicyIdx),
+			ovsdbops.IpBlockIndexKey:    strconv.Itoa(ipBlockIdx),
 		})
 }
 
@@ -404,14 +405,14 @@ func (syncer *ACLSyncer) updateStaleGressPolicies(legacyACLs []*nbdb.ACL) (updat
 	return
 }
 
-func (syncer *ACLSyncer) getDefaultDenyPolicyACLIDs(ns, policyType, defaultACLType string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLNetpolNamespace, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: ns,
+func (syncer *ACLSyncer) getDefaultDenyPolicyACLIDs(ns, policyType, defaultACLType string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLNetpolNamespace, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: ns,
 			// in the same namespace there can be 2 default deny port groups, egress and ingress,
 			// every port group has default deny and arp allow acl.
-			libovsdbops.PolicyDirectionKey: policyType,
-			libovsdbops.TypeKey:            defaultACLType,
+			ovsdbops.PolicyDirectionKey: policyType,
+			ovsdbops.TypeKey:            defaultACLType,
 		})
 }
 
@@ -439,7 +440,7 @@ func (syncer *ACLSyncer) updateStaleDefaultDenyNetpolACLs(legacyACLs []*nbdb.ACL
 				pgName = strings.TrimPrefix(acl.Match, "outport == @")
 			}
 			pgName = strings.TrimSuffix(pgName, " && "+staleArpAllowPolicyMatch)
-			deleteOps, err = libovsdbops.DeleteACLsFromPortGroupOps(syncer.nbClient, deleteOps, pgName, acl)
+			deleteOps, err = ovnops.DeleteACLsFromPortGroupOps(syncer.nbClient, deleteOps, pgName, acl)
 			if err != nil {
 				err = fmt.Errorf("failed getting delete acl ops: %w", err)
 				return
@@ -452,7 +453,7 @@ func (syncer *ACLSyncer) updateStaleDefaultDenyNetpolACLs(legacyACLs []*nbdb.ACL
 		// therefore it is safe to extract it from the name.
 		// works for both older name <namespace>_<policyname> and newer
 		// <namespace>_egressDefaultDeny OR <namespace>_ingressDefaultDeny
-		ns := strings.Split(libovsdbops.GetACLName(acl), "_")[0]
+		ns := strings.Split(ovnops.GetACLName(acl), "_")[0]
 
 		// distinguish ARPAllowACL from DefaultDeny
 		var defaultDenyACLType string
@@ -468,11 +469,11 @@ func (syncer *ACLSyncer) updateStaleDefaultDenyNetpolACLs(legacyACLs []*nbdb.ACL
 	return
 }
 
-func (syncer *ACLSyncer) getEgressFirewallACLDbIDs(namespace string, ruleIdx int) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLEgressFirewall, syncer.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: namespace,
-			libovsdbops.RuleIndex:     strconv.Itoa(ruleIdx),
+func (syncer *ACLSyncer) getEgressFirewallACLDbIDs(namespace string, ruleIdx int) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLEgressFirewall, syncer.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: namespace,
+			ovsdbops.RuleIndex:     strconv.Itoa(ruleIdx),
 		})
 }
 

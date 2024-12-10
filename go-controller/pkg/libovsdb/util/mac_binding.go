@@ -7,7 +7,7 @@ import (
 	"github.com/ovn-org/libovsdb/model"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 )
 
@@ -37,7 +37,7 @@ func DeleteSbdbMacBindingsWithIPs(sbClient libovsdbclient.Client, ips ...string)
 		return fmt.Errorf("failed to delete SBDB mac binding while generating ops: %v", err)
 	}
 
-	_, err = libovsdbops.TransactAndCheck(sbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(sbClient, ops)
 	if err != nil {
 		return fmt.Errorf("failed to delete SBDB mac binding while transacting ops: %v", err)
 	}

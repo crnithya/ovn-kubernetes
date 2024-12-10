@@ -11,7 +11,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/observability-lib/model"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/observability-lib/ovsdb"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/observability"
 )
@@ -122,7 +123,7 @@ func findACLBySample(nbClient client.Client, acl *nbdb.ACL) ([]*nbdb.ACL, error)
 
 func (d *SampleDecoder) DecodeCookieIDs(obsDomainID, obsPointID uint32) (model.NetworkEvent, error) {
 	// Find sample using obsPointID
-	sample, err := libovsdbops.FindSample(d.nbClient, int(obsPointID))
+	sample, err := ovnops.FindSample(d.nbClient, int(obsPointID))
 	if err != nil || sample == nil {
 		return nil, fmt.Errorf("find sample failed: %w", err)
 	}
@@ -169,14 +170,14 @@ func (d *SampleDecoder) DecodeCookieIDs(obsDomainID, obsPointID uint32) (model.N
 }
 
 func newACLEvent(o *nbdb.ACL) (*model.ACLEvent, error) {
-	actor := o.ExternalIDs[libovsdbops.OwnerTypeKey.String()]
+	actor := o.ExternalIDs[ovsdbops.OwnerTypeKey.String()]
 	event := model.ACLEvent{
 		Action: o.Action,
 		Actor:  actor,
 	}
 	switch actor {
-	case libovsdbops.NetworkPolicyOwnerType:
-		objName := o.ExternalIDs[libovsdbops.ObjectNameKey.String()]
+	case ovsdbops.NetworkPolicyOwnerType:
+		objName := o.ExternalIDs[ovsdbops.ObjectNameKey.String()]
 		nsname := strings.SplitN(objName, ":", 2)
 		if len(nsname) == 2 {
 			event.Namespace = nsname[0]
@@ -184,21 +185,21 @@ func newACLEvent(o *nbdb.ACL) (*model.ACLEvent, error) {
 		} else {
 			return nil, fmt.Errorf("expected format namespace:name for Object Name, but found: %s", objName)
 		}
-		event.Direction = o.ExternalIDs[libovsdbops.PolicyDirectionKey.String()]
-	case libovsdbops.AdminNetworkPolicyOwnerType, libovsdbops.BaselineAdminNetworkPolicyOwnerType:
-		event.Name = o.ExternalIDs[libovsdbops.ObjectNameKey.String()]
-		event.Direction = o.ExternalIDs[libovsdbops.PolicyDirectionKey.String()]
-	case libovsdbops.MulticastNamespaceOwnerType, libovsdbops.NetpolNamespaceOwnerType:
-		event.Namespace = o.ExternalIDs[libovsdbops.ObjectNameKey.String()]
-		event.Direction = o.ExternalIDs[libovsdbops.PolicyDirectionKey.String()]
-	case libovsdbops.MulticastClusterOwnerType:
-		event.Direction = o.ExternalIDs[libovsdbops.PolicyDirectionKey.String()]
-	case libovsdbops.EgressFirewallOwnerType:
-		event.Namespace = o.ExternalIDs[libovsdbops.ObjectNameKey.String()]
+		event.Direction = o.ExternalIDs[ovsdbops.PolicyDirectionKey.String()]
+	case ovsdbops.AdminNetworkPolicyOwnerType, ovsdbops.BaselineAdminNetworkPolicyOwnerType:
+		event.Name = o.ExternalIDs[ovsdbops.ObjectNameKey.String()]
+		event.Direction = o.ExternalIDs[ovsdbops.PolicyDirectionKey.String()]
+	case ovsdbops.MulticastNamespaceOwnerType, ovsdbops.NetpolNamespaceOwnerType:
+		event.Namespace = o.ExternalIDs[ovsdbops.ObjectNameKey.String()]
+		event.Direction = o.ExternalIDs[ovsdbops.PolicyDirectionKey.String()]
+	case ovsdbops.MulticastClusterOwnerType:
+		event.Direction = o.ExternalIDs[ovsdbops.PolicyDirectionKey.String()]
+	case ovsdbops.EgressFirewallOwnerType:
+		event.Namespace = o.ExternalIDs[ovsdbops.ObjectNameKey.String()]
 		event.Direction = "Egress"
-	case libovsdbops.UDNIsolationOwnerType:
-		event.Name = o.ExternalIDs[libovsdbops.ObjectNameKey.String()]
-	case libovsdbops.NetpolNodeOwnerType:
+	case ovsdbops.UDNIsolationOwnerType:
+		event.Name = o.ExternalIDs[ovsdbops.ObjectNameKey.String()]
+	case ovsdbops.NetpolNodeOwnerType:
 		event.Direction = "Ingress"
 	}
 	return &event, nil

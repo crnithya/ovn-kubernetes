@@ -10,7 +10,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -23,7 +24,7 @@ const (
 	// egressDefaultDenySuffix is the suffix used when creating the ingress port group for a namespace
 	egressDefaultDenySuffix      = "egressDefaultDeny"
 	defaultNetworkControllerName = "default-network-controller"
-	// values for libovsdbops.PolicyDirectionKey
+	// values for ovsdbops.PolicyDirectionKey
 	// We don't reuse any external constants in this package, as it should update db entries from a
 	// pre-defined format. If in the future values for some external constants change, this package shouldn't be affected.
 	policyDirectionIngress = "Ingress"
@@ -107,58 +108,58 @@ func NewPortGroupSyncer(nbClient libovsdbclient.Client) *PortGroupSyncer {
 	}
 }
 
-func getPortGroupNamespaceDbIDs(namespace, networkExternalID string) *libovsdbops.DbObjectIDs {
+func getPortGroupNamespaceDbIDs(namespace, networkExternalID string) *ovsdbops.DbObjectIDs {
 	controllerName := getControllerName(networkExternalID)
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNamespace, controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: namespace,
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNamespace, controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: namespace,
 	})
 }
 
-func getPortGroupNetpolNamespaceDbIDs(namespace, direction, networkExternalID string) *libovsdbops.DbObjectIDs {
+func getPortGroupNetpolNamespaceDbIDs(namespace, direction, networkExternalID string) *ovsdbops.DbObjectIDs {
 	controllerName := getControllerName(networkExternalID)
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNetpolNamespace, controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey:      namespace,
-		libovsdbops.PolicyDirectionKey: direction,
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNetpolNamespace, controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey:      namespace,
+		ovsdbops.PolicyDirectionKey: direction,
 	})
 }
 
-func getPortGroupNetworkPolicyDbIDs(policyNamespace, policyName, networkExternalID string) *libovsdbops.DbObjectIDs {
+func getPortGroupNetworkPolicyDbIDs(policyNamespace, policyName, networkExternalID string) *ovsdbops.DbObjectIDs {
 	controllerName := getControllerName(networkExternalID)
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNetworkPolicy, controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: fmt.Sprintf("%s:%s", policyNamespace, policyName),
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNetworkPolicy, controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: fmt.Sprintf("%s:%s", policyNamespace, policyName),
 		})
 }
 
-func getPortGroupAdminNetworkPolicyDbIDs(anpName string, isBanp bool, networkExternalID string) *libovsdbops.DbObjectIDs {
+func getPortGroupAdminNetworkPolicyDbIDs(anpName string, isBanp bool, networkExternalID string) *ovsdbops.DbObjectIDs {
 	controllerName := getControllerName(networkExternalID)
-	idsType := libovsdbops.PortGroupAdminNetworkPolicy
+	idsType := ovsdbops.PortGroupAdminNetworkPolicy
 	if isBanp {
-		idsType = libovsdbops.PortGroupBaselineAdminNetworkPolicy
+		idsType = ovsdbops.PortGroupBaselineAdminNetworkPolicy
 	}
-	return libovsdbops.NewDbObjectIDs(idsType, controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: anpName,
+	return ovsdbops.NewDbObjectIDs(idsType, controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: anpName,
 		})
 }
 
-func getPortGroupClusterDbIDs(baseName, networkExternalID string) *libovsdbops.DbObjectIDs {
+func getPortGroupClusterDbIDs(baseName, networkExternalID string) *ovsdbops.DbObjectIDs {
 	controllerName := getControllerName(networkExternalID)
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupCluster, controllerName, map[libovsdbops.ExternalIDKey]string{
-		libovsdbops.ObjectNameKey: baseName,
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupCluster, controllerName, map[ovsdbops.ExternalIDKey]string{
+		ovsdbops.ObjectNameKey: baseName,
 	})
 }
 
 // getReferencingObjsAndNewDbIDs finds all object that reference stale port group and tries to create a new dbIDs
 // based on referencing objects
 func (syncer *PortGroupSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName, networkExternalID string, referencingACLUUIDs []string) (acls []*nbdb.ACL,
-	dbIDs *libovsdbops.DbObjectIDs, err error) {
+	dbIDs *ovsdbops.DbObjectIDs, err error) {
 	// get all referencing objects
 	refACLs := []*nbdb.ACL{}
 	for _, aclUUID := range referencingACLUUIDs {
 		refACLs = append(refACLs, &nbdb.ACL{UUID: aclUUID})
 	}
-	acls, err = libovsdbops.FindACLs(syncer.nbClient, refACLs)
+	acls, err = ovnops.FindACLs(syncer.nbClient, refACLs)
 	if err != nil {
 		err = fmt.Errorf("failed to find acls for port group %s: %v", oldHash, err)
 		return
@@ -187,7 +188,7 @@ func (syncer *PortGroupSyncer) getReferencingObjsAndNewDbIDs(oldHash, oldName, n
 			}
 			// all default deny acls will have the same namespace as ExternalID
 			acl := acls[0]
-			namespace := acl.ExternalIDs[libovsdbops.ObjectNameKey.String()]
+			namespace := acl.ExternalIDs[ovsdbops.ObjectNameKey.String()]
 			var direction string
 			if s[1] == ingressDefaultDenySuffix {
 				direction = policyDirectionIngress
@@ -215,12 +216,12 @@ func (syncer *PortGroupSyncer) getUpdatePortGroupOps(portGroupInfos []*updatePor
 	for _, portGroupInfo := range portGroupInfos {
 		oldName := portGroupInfo.oldPG.ExternalIDs["name"]
 		// create updated port group
-		ops, err = libovsdbops.CreateOrUpdatePortGroupsOps(syncer.nbClient, ops, portGroupInfo.newPG)
+		ops, err = ovnops.CreateOrUpdatePortGroupsOps(syncer.nbClient, ops, portGroupInfo.newPG)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update port group ops for port group %s: %v", oldName, err)
 		}
 		// delete old port group
-		ops, err = libovsdbops.DeletePortGroupsOps(syncer.nbClient, ops, portGroupInfo.oldPG.Name)
+		ops, err = ovnops.DeletePortGroupsOps(syncer.nbClient, ops, portGroupInfo.oldPG.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update port group ops for port group %s: %v", oldName, err)
 		}
@@ -236,7 +237,7 @@ func (syncer *PortGroupSyncer) getUpdatePortGroupOps(portGroupInfos []*updatePor
 	}
 
 	for _, acl := range aclsToUpdate {
-		ops, err = libovsdbops.UpdateACLsOps(syncer.nbClient, ops, acl)
+		ops, err = ovnops.UpdateACLsOps(syncer.nbClient, ops, acl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get update acl ops: %v", err)
 		}
@@ -263,7 +264,7 @@ func (syncer *PortGroupSyncer) getPortGroupUpdateInfo(pg *nbdb.PortGroup, pgToAC
 	newPG := pg.DeepCopy()
 	// reset UUID
 	newPG.UUID = ""
-	// update port group Name and ExternalIDs exactly the same way as in libovsdbops.BuildPortGroup
+	// update port group Name and ExternalIDs exactly the same way as in ovsdbops.BuildPortGroup
 	newPG.Name = libovsdbutil.GetPortGroupName(dbIDs)
 	newPG.ExternalIDs = dbIDs.GetExternalIDs()
 	return &updatePortGroupInfo{acls, pg, newPG}, nil
@@ -282,7 +283,7 @@ func getPGNamesFromMatch(match string) []string {
 
 func (syncer *PortGroupSyncer) getReferencingACLs() (map[string][]string, error) {
 	pgToACLUUIDs := map[string][]string{}
-	_, err := libovsdbops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
+	_, err := ovnops.FindACLsWithPredicate(syncer.nbClient, func(acl *nbdb.ACL) bool {
 		aclPGs := getPGNamesFromMatch(acl.Match)
 		for _, pgName := range aclPGs {
 			pgToACLUUIDs[pgName] = append(pgToACLUUIDs[pgName], acl.UUID)
@@ -298,7 +299,7 @@ func (syncer *PortGroupSyncer) getReferencingACLs() (map[string][]string, error)
 // SyncPortGroups must be run after ACLs sync, since it uses new ACL.ExternalIDs
 func (syncer *PortGroupSyncer) SyncPortGroups() error {
 	// stale port groups don't have controller ID
-	portGroupList, err := libovsdbops.FindPortGroupsWithPredicate(syncer.nbClient, libovsdbops.GetNoOwnerPredicate[*nbdb.PortGroup]())
+	portGroupList, err := ovnops.FindPortGroupsWithPredicate(syncer.nbClient, ovsdbops.GetNoOwnerPredicate[*nbdb.PortGroup]())
 	if err != nil {
 		return fmt.Errorf("failed to find stale port groups: %v", err)
 	}
@@ -319,7 +320,7 @@ func (syncer *PortGroupSyncer) SyncPortGroups() error {
 		if err != nil {
 			return fmt.Errorf("failed to get update port groups ops: %w", err)
 		}
-		_, err = libovsdbops.TransactAndCheck(syncer.nbClient, ops)
+		_, err = ovsdbops.TransactAndCheck(syncer.nbClient, ops)
 		if err != nil {
 			return fmt.Errorf("failed to transact port group sync ops: %v", err)
 		}

@@ -33,7 +33,8 @@ import (
 
 	globalconfig "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
@@ -755,16 +756,16 @@ func (c *Controller) cleanupUDNEnabledServiceRoute(key string) error {
 	var err error
 	if c.netInfo.TopologyType() == types.Layer2Topology {
 		for _, node := range c.nodeInfos {
-			if ops, err = libovsdbops.DeleteLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, ops, c.netInfo.GetNetworkScopedGWRouterName(node.name), delPredicate); err != nil {
+			if ops, err = ovnops.DeleteLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, ops, c.netInfo.GetNetworkScopedGWRouterName(node.name), delPredicate); err != nil {
 				return err
 			}
 		}
 	} else {
-		if ops, err = libovsdbops.DeleteLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, ops, c.netInfo.GetNetworkScopedClusterRouterName(), delPredicate); err != nil {
+		if ops, err = ovnops.DeleteLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, ops, c.netInfo.GetNetworkScopedClusterRouterName(), delPredicate); err != nil {
 			return err
 		}
 	}
-	_, err = libovsdbops.TransactAndCheck(c.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(c.nbClient, ops)
 	return err
 }
 
@@ -781,7 +782,7 @@ func (c *Controller) configureUDNEnabledServiceRoute(service *corev1.Service) er
 			a.ExternalIDs[types.NetworkExternalID] == b.ExternalIDs[types.NetworkExternalID] &&
 			a.ExternalIDs[types.TopologyExternalID] == b.ExternalIDs[types.TopologyExternalID] &&
 			a.ExternalIDs[types.UDNEnabledServiceExternalID] == b.ExternalIDs[types.UDNEnabledServiceExternalID] &&
-			libovsdbops.PolicyEqualPredicate(a.Policy, b.Policy) &&
+			ovnops.PolicyEqualPredicate(a.Policy, b.Policy) &&
 			a.Nexthop == b.Nexthop
 
 	}
@@ -805,7 +806,8 @@ func (c *Controller) configureUDNEnabledServiceRoute(service *corev1.Service) er
 		if c.netInfo.TopologyType() == types.Layer2Topology {
 			routerName = nodeInfo.gatewayRouterName
 		}
-		ops, err = libovsdbops.CreateOrUpdateLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, nil, routerName, &staticRoute, func(item *nbdb.LogicalRouterStaticRoute) bool {
+		ops, err = ovnops.CreateOrUpdateLogicalRouterStaticRoutesWithPredicateOps(c.nbClient, nil, routerName, &staticRoute, func(item *nbdb.LogicalRouterStaticRoute) bool {
+
 			return routesEqual(item, &staticRoute)
 		})
 		if err != nil {
@@ -813,7 +815,7 @@ func (c *Controller) configureUDNEnabledServiceRoute(service *corev1.Service) er
 		}
 	}
 
-	_, err := libovsdbops.TransactAndCheck(c.nbClient, ops)
+	_, err := ovsdbops.TransactAndCheck(c.nbClient, ops)
 	return err
 }
 

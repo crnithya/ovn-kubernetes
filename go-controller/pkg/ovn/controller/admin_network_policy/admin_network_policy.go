@@ -19,7 +19,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/metrics"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
@@ -449,7 +450,7 @@ func (c *Controller) convertANPSubjectToLSPs(anp *adminNetworkPolicyState) ([]*n
 			}
 			logicalPortName := util.GetLogicalPortName(pod.Namespace, pod.Name)
 			lsp := &nbdb.LogicalSwitchPort{Name: logicalPortName}
-			lsp, err = libovsdbops.GetLogicalSwitchPort(c.nbClient, lsp)
+			lsp, err = ovnops.GetLogicalSwitchPort(c.nbClient, lsp)
 			if err != nil {
 				if errors.Is(err, libovsdbclient.ErrNotFound) {
 					// NOTE(tssurya): Danger of doing this is if there is time gap between pod being annotated with chosen IP
@@ -528,13 +529,13 @@ func (c *Controller) clearAdminNetworkPolicy(anpName string) error {
 	// remove PG for Subject (ACLs will get cleaned up automatically)
 	portGroupName := c.getANPPortGroupName(anp.name, false)
 	// no need to batch this with address-set deletes since this itself will contain a bunch of ACLs that need to be deleted which is heavy enough.
-	err = libovsdbops.DeletePortGroups(c.nbClient, portGroupName)
+	err = ovnops.DeletePortGroups(c.nbClient, portGroupName)
 	if err != nil {
 		return fmt.Errorf("unable to delete PG %s for ANP %s: %w", portGroupName, anp.name, err)
 	}
 	// remove address-sets that were created for the peers of each rule fpr the whole ANP
 	// do this after ACLs are gone so that there is no lingering references
-	err = c.clearASForPeers(anp.name, libovsdbops.AddressSetAdminNetworkPolicy)
+	err = c.clearASForPeers(anp.name, ovsdbops.AddressSetAdminNetworkPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to delete address-sets for ANP %s/%d: %w", anp.name, anp.anpPriority, err)
 	}
@@ -550,13 +551,13 @@ func (c *Controller) clearAdminNetworkPolicy(anpName string) error {
 
 // clearASForPeers takes the externalID objectIDs and uses them to delete all the address-sets
 // that were owned by anpName
-func (c *Controller) clearASForPeers(anpName string, idType *libovsdbops.ObjectIDsType) error {
-	predicateIDs := libovsdbops.NewDbObjectIDs(idType, c.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: anpName,
+func (c *Controller) clearASForPeers(anpName string, idType *ovsdbops.ObjectIDsType) error {
+	predicateIDs := ovsdbops.NewDbObjectIDs(idType, c.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: anpName,
 		})
-	asPredicate := libovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
-	if err := libovsdbops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
+	asPredicate := ovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
+	if err := ovnops.DeleteAddressSetsWithPredicate(c.nbClient, asPredicate); err != nil {
 		return fmt.Errorf("failed to destroy address-set for ANP %s, err: %v", anpName, err)
 	}
 	return nil
@@ -573,17 +574,17 @@ func (c *Controller) createNewANP(desiredANPState *adminNetworkPolicyState, desi
 		return fmt.Errorf("failed to create address-sets, %v", err)
 	}
 	ops = append(ops, addrSetOps...)
-	ops, err = libovsdbops.CreateOrUpdateACLsOps(c.nbClient, ops, c.GetSamplingConfig(), desiredACLs...)
+	ops, err = ovnops.CreateOrUpdateACLsOps(c.nbClient, ops, c.GetSamplingConfig(), desiredACLs...)
 	if err != nil {
 		return fmt.Errorf("failed to create ACL ops: %v", err)
 	}
 	pgDbIDs := GetANPPortGroupDbIDs(desiredANPState.name, isBanp, c.controllerName)
 	pg := libovsdbutil.BuildPortGroup(pgDbIDs, desiredPorts, desiredACLs)
-	ops, err = libovsdbops.CreateOrUpdatePortGroupsOps(c.nbClient, ops, pg)
+	ops, err = ovnops.CreateOrUpdatePortGroupsOps(c.nbClient, ops, pg)
 	if err != nil {
 		return fmt.Errorf("failed to create ops to add port to a port group: %v", err)
 	}
-	_, err = libovsdbops.TransactAndCheck(c.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(c.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("failed to run ovsdb txn to add ports to port group: %v", err)
 	}
@@ -674,13 +675,13 @@ func (c *Controller) updateExistingANP(currentANPState, desiredANPState *adminNe
 	if fullPeerRecompute || atLeastOneRuleUpdated || hasPriorityChanged || hasACLLoggingParamsChanged {
 		klog.V(3).Infof("ANP %s with priority %d was updated", desiredANPState.name, desiredANPState.anpPriority)
 		// now update the acls to the desired ones
-		ops, err = libovsdbops.CreateOrUpdateACLsOps(c.nbClient, ops, c.GetSamplingConfig(), desiredACLs...)
+		ops, err = ovnops.CreateOrUpdateACLsOps(c.nbClient, ops, c.GetSamplingConfig(), desiredACLs...)
 		if err != nil {
 			return fmt.Errorf("failed to create new ACL ops for anp %s: %v", desiredANPState.name, err)
 		}
 		// since we update the portgroup with the new set of ACLs, any unreferenced set of ACLs
 		// will be automatically removed
-		ops, err = libovsdbops.UpdatePortGroupSetACLsOps(c.nbClient, ops, portGroupName, desiredACLs)
+		ops, err = ovnops.UpdatePortGroupSetACLsOps(c.nbClient, ops, portGroupName, desiredACLs)
 		if err != nil {
 			return fmt.Errorf("failed to create ACL-on-PG update ops for anp %s: %v", desiredANPState.name, err)
 		}
@@ -697,7 +698,7 @@ func (c *Controller) updateExistingANP(currentANPState, desiredANPState *adminNe
 		return fmt.Errorf("failed to create ops for changes to ANP %s subject: %v", desiredANPState.name, err)
 	}
 	ops = append(ops, subjectOps...)
-	_, err = libovsdbops.TransactAndCheck(c.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(c.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("failed to run ovsdb txn to update ANP %s: %v", desiredANPState.name, err)
 	}
@@ -712,23 +713,23 @@ func (c *Controller) constructOpsForRuleChanges(desiredANPState *adminNetworkPol
 	// we need to delete address-sets only if the number of rules in the desiredANPState object is
 	// less than the number of rules in the currentANPState object (AddressSet indexes are calculated based on rule's position)
 	// rest of the cases will be createorupdate of existing existing address-sets in the cluster
-	idType := libovsdbops.AddressSetAdminNetworkPolicy
+	idType := ovsdbops.AddressSetAdminNetworkPolicy
 	if isBanp {
-		idType = libovsdbops.AddressSetBaselineAdminNetworkPolicy
+		idType = ovsdbops.AddressSetBaselineAdminNetworkPolicy
 	}
-	predicateIDs := libovsdbops.NewDbObjectIDs(idType, c.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: desiredANPState.name,
+	predicateIDs := ovsdbops.NewDbObjectIDs(idType, c.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: desiredANPState.name,
 		})
 	predicateFunc := func(as *nbdb.AddressSet) bool {
-		asIndex, _ := strconv.Atoi(as.ExternalIDs[libovsdbops.GressIdxKey.String()])
-		return (as.ExternalIDs[libovsdbops.PolicyDirectionKey.String()] == string(libovsdbutil.ACLEgress) &&
+		asIndex, _ := strconv.Atoi(as.ExternalIDs[ovsdbops.GressIdxKey.String()])
+		return (as.ExternalIDs[ovsdbops.PolicyDirectionKey.String()] == string(libovsdbutil.ACLEgress) &&
 			asIndex >= len(desiredANPState.egressRules)) ||
-			(as.ExternalIDs[libovsdbops.PolicyDirectionKey.String()] == string(libovsdbutil.ACLIngress) &&
+			(as.ExternalIDs[ovsdbops.PolicyDirectionKey.String()] == string(libovsdbutil.ACLIngress) &&
 				asIndex >= len(desiredANPState.ingressRules))
 	}
-	asPredicate := libovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, predicateFunc)
-	ops, err = libovsdbops.DeleteAddressSetsWithPredicateOps(c.nbClient, ops, asPredicate)
+	asPredicate := ovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, predicateFunc)
+	ops, err = ovnops.DeleteAddressSetsWithPredicateOps(c.nbClient, ops, asPredicate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create address-set destroy ops for ANP %s, err: %v", desiredANPState.name, err)
 	}
@@ -809,14 +810,14 @@ func (c *Controller) constructOpsForSubjectChanges(currentANPState, desiredANPSt
 	portsToDelete := currentANPState.subject.podPorts.Difference(desiredANPState.subject.podPorts).UnsortedList()
 	if len(portsToAdd) > 0 {
 		klog.V(5).Infof("Adding ports %+v to port-group %s for ANP %s", portsToAdd, portGroupName, desiredANPState.name)
-		ops, err = libovsdbops.AddPortsToPortGroupOps(c.nbClient, ops, portGroupName, portsToAdd...)
+		ops, err = ovnops.AddPortsToPortGroupOps(c.nbClient, ops, portGroupName, portsToAdd...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Port-to-PG add ops for anp %s: %v", desiredANPState.name, err)
 		}
 	}
 	if len(portsToDelete) > 0 {
 		klog.V(5).Infof("Deleting ports %+v from port-group %s for ANP %s", portsToDelete, portGroupName, desiredANPState.name)
-		ops, err = libovsdbops.DeletePortsFromPortGroupOps(c.nbClient, ops, portGroupName, portsToDelete...)
+		ops, err = ovnops.DeletePortsFromPortGroupOps(c.nbClient, ops, portGroupName, portsToDelete...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Port-from-PG delete ops for anp %s: %v", desiredANPState.name, err)
 		}

@@ -11,7 +11,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 )
@@ -120,7 +121,7 @@ func getLoadBalancerTemplates(lb *nbdb.LoadBalancer, allTemplates TemplateMap) T
 func listSvcTemplates(nbClient libovsdbclient.Client) (templatesByName TemplateMap, err error) {
 	templatesByName = TemplateMap{}
 
-	templatesList, err := libovsdbops.ListTemplateVar(nbClient)
+	templatesList, err := ovnops.ListTemplateVar(nbClient)
 	if err != nil {
 		return
 	}
@@ -144,7 +145,7 @@ func svcCreateOrUpdateTemplateVarOps(nbClient libovsdbclient.Client,
 	var err error
 
 	forEachNBTemplateInMaps(templateVars, func(nbTemplate *nbdb.ChassisTemplateVar) bool {
-		ops, err = libovsdbops.CreateOrUpdateChassisTemplateVarOps(nbClient, ops, nbTemplate)
+		ops, err = ovnops.CreateOrUpdateChassisTemplateVarOps(nbClient, ops, nbTemplate)
 		return err == nil
 	})
 	if err != nil {
@@ -158,7 +159,7 @@ func svcDeleteTemplateVarOps(nbClient libovsdbclient.Client,
 	var err error
 
 	forEachNBTemplateInMaps(templateVars, func(nbTemplate *nbdb.ChassisTemplateVar) bool {
-		ops, err = libovsdbops.DeleteChassisTemplateVarVariablesOps(nbClient, ops, nbTemplate)
+		ops, err = ovnops.DeleteChassisTemplateVarVariablesOps(nbClient, ops, nbTemplate)
 		return err == nil
 	})
 	if err != nil {
@@ -173,7 +174,7 @@ func svcCreateOrUpdateTemplateVar(nbClient libovsdbclient.Client, templateVars [
 		return err
 	}
 
-	_, err = libovsdbops.TransactAndCheck(nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(nbClient, ops)
 	return err
 }
 

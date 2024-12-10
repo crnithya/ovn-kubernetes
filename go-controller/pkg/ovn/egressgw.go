@@ -22,7 +22,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/factory"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	apbroutecontroller "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/controller/apbroute"
@@ -247,7 +248,7 @@ func (oc *DefaultNetworkController) createBFDStaticRoute(bfdEnabled bool, gw str
 			DstIP:       gw,
 			LogicalPort: port,
 		}
-		ops, err = libovsdbops.CreateOrUpdateBFDOps(oc.nbClient, ops, &bfd)
+		ops, err = ovnops.CreateOrUpdateBFDOps(oc.nbClient, ops, &bfd)
 		if err != nil {
 			return fmt.Errorf("error creating or updating BFD %+v: %v", bfd, err)
 		}
@@ -261,13 +262,13 @@ func (oc *DefaultNetworkController) createBFDStaticRoute(bfdEnabled bool, gw str
 			*item.OutputPort == *lrsr.OutputPort &&
 			item.Policy == lrsr.Policy
 	}
-	ops, err = libovsdbops.CreateOrUpdateLogicalRouterStaticRoutesWithPredicateOps(oc.nbClient, ops, gr, &lrsr, p,
+	ops, err = ovnops.CreateOrUpdateLogicalRouterStaticRoutesWithPredicateOps(oc.nbClient, ops, gr, &lrsr, p,
 		&lrsr.Options)
 	if err != nil {
 		return fmt.Errorf("error creating or updating static route %+v on router %s: %v", lrsr, gr, err)
 	}
 
-	_, err = libovsdbops.TransactAndCheck(oc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(oc.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("error transacting static route: %v", err)
 	}
@@ -282,7 +283,7 @@ func (oc *DefaultNetworkController) deleteLogicalRouterStaticRoute(podIP, mask, 
 			item.IPPrefix == podIP+mask &&
 			item.Nexthop == gw
 	}
-	err := libovsdbops.DeleteLogicalRouterStaticRoutesWithPredicate(oc.nbClient, gr, p)
+	err := ovnops.DeleteLogicalRouterStaticRoutesWithPredicate(oc.nbClient, gr, p)
 	if err != nil {
 		return fmt.Errorf("error deleting static route from router %s: %v", gr, err)
 	}
@@ -586,7 +587,7 @@ func (oc *DefaultNetworkController) deletePodSNAT(nodeName string, extIPs, podIP
 		return err
 	}
 
-	_, err = libovsdbops.TransactAndCheck(oc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(oc.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("failed to delete SNAT rule for pod on gateway router %s: %w", oc.GetNetworkScopedGWRouterName(nodeName), err)
 	}
@@ -602,13 +603,13 @@ func buildPodSNAT(extIPs, podIPNets []*net.IPNet, match string) ([]*nbdb.NAT, er
 			Mask: util.GetIPFullMask(podIPNet.IP),
 		}
 		if len(extIPs) == 0 {
-			nats = append(nats, libovsdbops.BuildSNATWithMatch(nil, fullMaskPodNet, "", nil, match))
+			nats = append(nats, ovnops.BuildSNATWithMatch(nil, fullMaskPodNet, "", nil, match))
 		} else {
 			for _, gwIPNet := range extIPs {
 				if utilnet.IsIPv6CIDR(gwIPNet) != utilnet.IsIPv6CIDR(podIPNet) {
 					continue
 				}
-				nats = append(nats, libovsdbops.BuildSNATWithMatch(&gwIPNet.IP, fullMaskPodNet, "", nil, match))
+				nats = append(nats, ovnops.BuildSNATWithMatch(&gwIPNet.IP, fullMaskPodNet, "", nil, match))
 			}
 		}
 	}
@@ -639,7 +640,7 @@ func deletePodSNATOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, gwR
 	logicalRouter := nbdb.LogicalRouter{
 		Name: gwRouterName,
 	}
-	ops, err = libovsdbops.DeleteNATsOps(nbClient, ops, &logicalRouter, nats...)
+	ops, err = ovnops.DeleteNATsOps(nbClient, ops, &logicalRouter, nats...)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		return nil, fmt.Errorf("failed create operation for deleting SNAT rule for pod on gateway router %s: %v", logicalRouter.Name, err)
 	}
@@ -656,7 +657,7 @@ func addOrUpdatePodSNAT(nbClient libovsdbclient.Client, gwRouterName string, ext
 	logicalRouter := nbdb.LogicalRouter{
 		Name: gwRouterName,
 	}
-	if err := libovsdbops.CreateOrUpdateNATs(nbClient, &logicalRouter, nats...); err != nil {
+	if err := ovnops.CreateOrUpdateNATs(nbClient, &logicalRouter, nats...); err != nil {
 		return fmt.Errorf("failed to update SNAT for pods of router %s: %v", logicalRouter.Name, err)
 	}
 	return nil
@@ -671,7 +672,7 @@ func addOrUpdatePodSNATOps(nbClient libovsdbclient.Client, gwRouterName string, 
 	if err != nil {
 		return nil, err
 	}
-	if ops, err = libovsdbops.CreateOrUpdateNATsOps(nbClient, ops, router, nats...); err != nil {
+	if ops, err = ovnops.CreateOrUpdateNATsOps(nbClient, ops, router, nats...); err != nil {
 		return nil, fmt.Errorf("failed to update SNAT for pods of router: %s, error: %v", gwRouterName, err)
 	}
 	return ops, nil
@@ -744,7 +745,7 @@ func (oc *DefaultNetworkController) addHybridRoutePolicyForPod(podIP net.IP, nod
 		p := func(item *nbdb.LogicalRouterPolicy) bool {
 			return item.Priority == logicalRouterPolicy.Priority && strings.Contains(item.Match, matchSrcAS)
 		}
-		err = libovsdbops.CreateOrUpdateLogicalRouterPolicyWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(),
+		err = ovnops.CreateOrUpdateLogicalRouterPolicyWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(),
 			&logicalRouterPolicy, p, &logicalRouterPolicy.Nexthops, &logicalRouterPolicy.Match, &logicalRouterPolicy.Action)
 		if err != nil {
 			return fmt.Errorf("failed to add policy route %+v to %s: %v", logicalRouterPolicy, oc.GetNetworkScopedClusterRouterName(), err)
@@ -809,7 +810,7 @@ func (oc *DefaultNetworkController) delHybridRoutePolicyForPod(podIP net.IP, nod
 			p := func(item *nbdb.LogicalRouterPolicy) bool {
 				return item.Priority == types.HybridOverlayReroutePriority && item.Match == matchStr
 			}
-			err := libovsdbops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
+			err := ovnops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
 			if err != nil {
 				return fmt.Errorf("error deleting policy %s on router %s: %v", matchStr, oc.GetNetworkScopedClusterRouterName(), err)
 			}
@@ -834,16 +835,16 @@ func (oc *DefaultNetworkController) delAllHybridRoutePolicies() error {
 	policyPred := func(item *nbdb.LogicalRouterPolicy) bool {
 		return item.Priority == types.HybridOverlayReroutePriority
 	}
-	err := libovsdbops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), policyPred)
+	err := ovnops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), policyPred)
 	if err != nil {
 		return fmt.Errorf("error deleting hybrid route policies on %s: %v", oc.GetNetworkScopedClusterRouterName(), err)
 	}
 
 	// nuke all the address-sets.
 	// if we fail to remove LRP's above, we don't attempt to remove ASes due to dependency constraints.
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetHybridNodeRoute, oc.controllerName, nil)
-	asPred := libovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
-	err = libovsdbops.DeleteAddressSetsWithPredicate(oc.nbClient, asPred)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetHybridNodeRoute, oc.controllerName, nil)
+	asPred := ovsdbops.GetPredicate[*nbdb.AddressSet](predicateIDs, nil)
+	err = ovnops.DeleteAddressSetsWithPredicate(oc.nbClient, asPred)
 	if err != nil {
 		return fmt.Errorf("failed to remove hybrid route address sets: %v", err)
 	}
@@ -865,7 +866,7 @@ func (oc *DefaultNetworkController) delAllLegacyHybridRoutePolicies() error {
 		}
 		return true
 	}
-	err := libovsdbops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
+	err := ovnops.DeleteLogicalRouterPoliciesWithPredicate(oc.nbClient, oc.GetNetworkScopedClusterRouterName(), p)
 	if err != nil {
 		return fmt.Errorf("error deleting legacy hybrid route policies on %s: %v", oc.GetNetworkScopedClusterRouterName(), err)
 	}
@@ -881,7 +882,7 @@ func (oc *DefaultNetworkController) cleanUpBFDEntry(gatewayIP, gatewayRouter, pr
 	p := func(item *nbdb.LogicalRouterStaticRoute) bool {
 		return item.OutputPort != nil && *item.OutputPort == portName && item.Nexthop == gatewayIP && item.BFD != nil && *item.BFD != ""
 	}
-	logicalRouterStaticRoutes, err := libovsdbops.FindLogicalRouterStaticRoutesWithPredicate(oc.nbClient, p)
+	logicalRouterStaticRoutes, err := ovnops.FindLogicalRouterStaticRoutesWithPredicate(oc.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("cleanUpBFDEntry failed to list routes for %s: %w", portName, err)
 	}
@@ -895,7 +896,7 @@ func (oc *DefaultNetworkController) cleanUpBFDEntry(gatewayIP, gatewayRouter, pr
 		DstIP:       gatewayIP,
 	}
 
-	err = libovsdbops.DeleteBFDs(oc.nbClient, &bfd)
+	err = ovnops.DeleteBFDs(oc.nbClient, &bfd)
 	if err != nil {
 		return fmt.Errorf("error deleting BFD %+v: %v", bfd, err)
 	}

@@ -23,7 +23,8 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/controller"
 	egressfirewallapi "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressfirewall/v1"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -85,7 +86,7 @@ func getEFExpectedDb(initialData []libovsdb.TestData, fakeOVN *FakeOVN, nsName s
 	if portMatch != "" {
 		match += " && " + portMatch
 	}
-	acl := libovsdbops.BuildACL(
+	acl := ovnops.BuildACL(
 		libovsdbutil.GetACLName(dbIDs),
 		nbdb.ACLDirectionToLport,
 		t.EgressFirewallStartPriority,
@@ -297,7 +298,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					// owned by non-existing namespace
 					fakeController := getFakeController(DefaultNetworkControllerName)
 					purgeIDs := fakeController.getEgressFirewallACLDbIDs("none", 0)
-					purgeACL := libovsdbops.BuildACL(
+					purgeACL := ovnops.BuildACL(
 						"purgeACL1",
 						nbdb.ACLDirectionFromLport,
 						t.EgressFirewallStartPriority,
@@ -312,7 +313,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					)
 					purgeACL.UUID = "purgeACL-UUID"
 					// no externalIDs present => dbIDs can't be built
-					purgeACL2 := libovsdbops.BuildACL(
+					purgeACL2 := ovnops.BuildACL(
 						"purgeACL2",
 						nbdb.ACLDirectionFromLport,
 						t.EgressFirewallStartPriority,
@@ -341,7 +342,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 						},
 					})
 					updateIDs := fakeController.getEgressFirewallACLDbIDs(namespace1.Name, 0)
-					updateACL := libovsdbops.BuildACL(
+					updateACL := ovnops.BuildACL(
 						"",
 						nbdb.ACLDirectionFromLport,
 						t.EgressFirewallStartPriority,
@@ -357,7 +358,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					updateACL.UUID = "updateACL-UUID"
 
 					// this ACL is not in the egress firewall priority range and should be untouched
-					ignoreACL := libovsdbops.BuildACL(
+					ignoreACL := ovnops.BuildACL(
 						"ignoreACL",
 						nbdb.ACLDirectionFromLport,
 						t.MinimumReservedEgressFirewallPriority-1,
@@ -860,7 +861,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					// check switch subnet is not set
 					newNodeLS := &nbdb.LogicalSwitch{Name: node.Name}
 					gomega.Consistently(func() bool {
-						sw, err := libovsdbops.GetLogicalSwitch(fakeOVN.nbClient, newNodeLS)
+						sw, err := ovnops.GetLogicalSwitch(fakeOVN.nbClient, newNodeLS)
 						gomega.Expect(err).NotTo(gomega.HaveOccurred())
 						return sw.OtherConfig["subnet"] == v4NodeSubnet
 					}).WithTimeout(500 * time.Millisecond).Should(gomega.BeFalse())
@@ -879,7 +880,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					ginkgo.By("Check node handler was called on update")
 					// check switch subnet is set, meaning the node handler was called
 					gomega.Eventually(func() bool {
-						sw, err := libovsdbops.GetLogicalSwitch(fakeOVN.nbClient, newNodeLS)
+						sw, err := ovnops.GetLogicalSwitch(fakeOVN.nbClient, newNodeLS)
 						gomega.Expect(err).NotTo(gomega.HaveOccurred())
 						return sw.OtherConfig["subnet"] == v4NodeSubnet
 					}).WithTimeout(500 * time.Millisecond).Should(gomega.BeTrue())
@@ -887,9 +888,9 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 					// make sure egress firewall acl was not updated as we are still holding a lock
 					getACLs := func() int {
 						// find all existing egress firewall ACLs
-						predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.ACLEgressFirewall, "default-network-controller", nil)
-						aclP := libovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
-						acls, err := libovsdbops.FindACLsWithPredicate(fakeOVN.nbClient, aclP)
+						predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.ACLEgressFirewall, "default-network-controller", nil)
+						aclP := ovsdbops.GetPredicate[*nbdb.ACL](predicateIDs, nil)
+						acls, err := ovnops.FindACLsWithPredicate(fakeOVN.nbClient, aclP)
 						gomega.Expect(err).NotTo(gomega.HaveOccurred())
 						return len(acls)
 					}
@@ -1211,7 +1212,7 @@ var _ = ginkgo.Describe("OVN EgressFirewall Operations", func() {
 
 					pg := dbWith1ACL[len(dbWith1ACL)-1].(*nbdb.PortGroup)
 					aclIDs2 := fakeOVN.controller.getEgressFirewallACLDbIDs(egressFirewall.Namespace, 1)
-					ipv4ACL2 := libovsdbops.BuildACL(
+					ipv4ACL2 := ovnops.BuildACL(
 						libovsdbutil.GetACLName(aclIDs2),
 						nbdb.ACLDirectionToLport,
 						t.EgressFirewallStartPriority-1,

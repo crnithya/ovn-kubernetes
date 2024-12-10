@@ -20,7 +20,8 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	controllerutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/controller"
-	nbdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	nbdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -32,7 +33,7 @@ const (
 	subscribeBuffer         = 100
 	reconcileDelay          = 500 * time.Millisecond
 	noTable                 = -1
-	controllerExternalIDKey = string(nbdbops.OwnerControllerKey)
+	controllerExternalIDKey = string(ovsdbops.OwnerControllerKey)
 	controllerName          = "RouteImport"
 )
 
@@ -409,7 +410,7 @@ func (c *controller) syncNetwork(network string) error {
 		}
 	}
 
-	_, err = nbdbops.TransactAndCheck(c.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(c.nbClient, ops)
 	if err != nil {
 		err := fmt.Errorf("failed to transact ops %v: %w", ops, err)
 		errs = append(errs, err)

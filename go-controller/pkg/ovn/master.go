@@ -17,7 +17,7 @@ import (
 	houtil "github.com/ovn-org/ovn-kubernetes/go-controller/hybrid-overlay/pkg/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kube"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/sbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -171,7 +171,7 @@ func (oc *DefaultNetworkController) checkNodeChassisMismatch(node *corev1.Node) 
 		return "", nil
 	}
 
-	chassisList, err := libovsdbops.ListChassis(oc.sbClient)
+	chassisList, err := ovnops.ListChassis(oc.sbClient)
 	if err != nil {
 		return "", fmt.Errorf("failed to get chassis list for node %s: error: %v", node.Name, err)
 	}
@@ -194,14 +194,14 @@ func (oc *DefaultNetworkController) deleteStaleNodeChassis(node *corev1.Node) er
 		p := func(item *sbdb.Chassis) bool {
 			return item.Name == staleChassis
 		}
-		if err = libovsdbops.DeleteChassisTemplateVar(oc.nbClient, &nbdb.ChassisTemplateVar{Chassis: staleChassis}); err != nil {
+		if err = ovnops.DeleteChassisTemplateVar(oc.nbClient, &nbdb.ChassisTemplateVar{Chassis: staleChassis}); err != nil {
 			// Send an event and Log on failure
 			oc.recorder.Eventf(node, corev1.EventTypeWarning, "ErrorMismatchChassis",
 				"Node %s is now with a new chassis ID. Its stale chassis template vars are still in the NBDB",
 				node.Name)
 			return fmt.Errorf("node %s is now with a new chassis ID. Its stale chassis template vars are still in the NBDB", node.Name)
 		}
-		if err = libovsdbops.DeleteChassisWithPredicate(oc.sbClient, p); err != nil {
+		if err = ovnops.DeleteChassisWithPredicate(oc.sbClient, p); err != nil {
 			if err == libovsdbclient.ErrNotFound {
 				klog.Infof("deleteStaleNodeChassis: chassis %s not found", node.Name)
 				return nil
@@ -234,10 +234,10 @@ func (oc *DefaultNetworkController) cleanupNodeResources(nodeName string) error 
 		}
 		return false
 	}
-	if err := libovsdbops.DeleteChassisWithPredicate(oc.sbClient, p); err != nil {
+	if err := ovnops.DeleteChassisWithPredicate(oc.sbClient, p); err != nil {
 		return fmt.Errorf("failed to remove the chassis associated with node %s in the OVN SB Chassis table: %v", nodeName, err)
 	}
-	if err := libovsdbops.DeleteChassisTemplateVar(oc.nbClient, chassisTemplateVars...); err != nil {
+	if err := ovnops.DeleteChassisTemplateVar(oc.nbClient, chassisTemplateVars...); err != nil {
 		return fmt.Errorf("failed deleting chassis template variables for %s: %v", nodeName, err)
 	}
 	return nil
@@ -300,7 +300,7 @@ func (oc *DefaultNetworkController) syncNodes(kNodes []interface{}) error {
 		_, ok := item.ExternalIDs[types.NetworkExternalID]
 		return len(item.OtherConfig) > 0 && !ok
 	}
-	nodeSwitches, err := libovsdbops.FindLogicalSwitchesWithPredicate(oc.nbClient, defaultNetworkPredicate)
+	nodeSwitches, err := ovnops.FindLogicalSwitchesWithPredicate(oc.nbClient, defaultNetworkPredicate)
 	if err != nil {
 		return fmt.Errorf("failed to get node logical switches which have other-config set: %v", err)
 	}
@@ -325,7 +325,7 @@ func (oc *DefaultNetworkController) syncNodes(kNodes []interface{}) error {
 		}
 		return false
 	}
-	_, err = libovsdbops.FindLogicalSwitchesWithPredicate(oc.nbClient, lookupExtSwFunction)
+	_, err = ovnops.FindLogicalSwitchesWithPredicate(oc.nbClient, lookupExtSwFunction)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		klog.Warning("Failed trying to find stale external logical switches")
 	}
@@ -343,7 +343,7 @@ func (oc *DefaultNetworkController) syncNodes(kNodes []interface{}) error {
 		}
 		return false
 	}
-	_, err = libovsdbops.FindLogicalRoutersWithPredicate(oc.nbClient, lookupGwRouterFunction)
+	_, err = ovnops.FindLogicalRoutersWithPredicate(oc.nbClient, lookupGwRouterFunction)
 	if err != nil && !errors.Is(err, libovsdbclient.ErrNotFound) {
 		klog.Warning("Failed trying to find stale gateway routers")
 	}
@@ -375,13 +375,13 @@ func (oc *DefaultNetworkController) syncNodes(kNodes []interface{}) error {
 // Cleanup stale chassis and chassis template variables with no
 // corresponding nodes.
 func (oc *DefaultNetworkController) syncChassis(localZoneNodeNames, remoteZoneNodeNames []string) error {
-	chassisList, err := libovsdbops.ListChassis(oc.sbClient)
+	chassisList, err := ovnops.ListChassis(oc.sbClient)
 	if err != nil {
 		return fmt.Errorf("failed to get chassis list: error: %v", err)
 	}
 
 	// Cleanup stale chassis private with no corresponding chassis
-	chassisPrivateList, err := libovsdbops.ListChassisPrivate(oc.sbClient)
+	chassisPrivateList, err := ovnops.ListChassisPrivate(oc.sbClient)
 	if err != nil {
 		return fmt.Errorf("failed to get chassis private list: %v", err)
 	}
@@ -389,7 +389,7 @@ func (oc *DefaultNetworkController) syncChassis(localZoneNodeNames, remoteZoneNo
 	templateVarList := []*nbdb.ChassisTemplateVar{}
 
 	if oc.svcTemplateSupport {
-		templateVarList, err = libovsdbops.ListTemplateVar(oc.nbClient)
+		templateVarList, err = ovnops.ListTemplateVar(oc.nbClient)
 		if err != nil {
 			return fmt.Errorf("failed to get template var list: error: %w", err)
 		}
@@ -447,11 +447,11 @@ func (oc *DefaultNetworkController) syncChassis(localZoneNodeNames, remoteZoneNo
 		staleChassisTemplateVars = append(staleChassisTemplateVars, template)
 	}
 
-	if err := libovsdbops.DeleteChassis(oc.sbClient, staleChassis...); err != nil {
+	if err := ovnops.DeleteChassis(oc.sbClient, staleChassis...); err != nil {
 		return fmt.Errorf("failed Deleting chassis %v error: %v", chassisHostNameMap, err)
 	}
 
-	if err := libovsdbops.DeleteChassisTemplateVar(oc.nbClient, staleChassisTemplateVars...); err != nil {
+	if err := ovnops.DeleteChassisTemplateVar(oc.nbClient, staleChassisTemplateVars...); err != nil {
 		return fmt.Errorf("failed Deleting chassis template vars %v error: %v", chassisHostNameMap, err)
 	}
 

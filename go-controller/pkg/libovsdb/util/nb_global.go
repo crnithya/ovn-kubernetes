@@ -5,7 +5,7 @@ import (
 
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 )
@@ -15,7 +15,7 @@ import (
 // It retuns error if there is no NBGlobal row.
 func GetNBZone(nbClient libovsdbclient.Client) (string, error) {
 	nbGlobal := &nbdb.NBGlobal{}
-	nbGlobal, err := libovsdbops.GetNBGlobal(nbClient, nbGlobal)
+	nbGlobal, err := ovnops.GetNBGlobal(nbClient, nbGlobal)
 	if err != nil {
 		return "", fmt.Errorf("error in getting the NBGlobal row  from Northbound db : err - %w", err)
 	}

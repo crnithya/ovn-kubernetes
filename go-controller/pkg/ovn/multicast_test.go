@@ -13,7 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -31,7 +32,7 @@ func getMulticastExpectedData(netInfo util.NetInfo, clusterPortGroup, clusterRtr
 	match := getMulticastACLMatch()
 	aclIDs := getDefaultMcastACLDbIDs(mcastDefaultDenyID, libovsdbutil.ACLEgress, netControllerName)
 	aclName := libovsdbutil.GetACLName(aclIDs)
-	defaultDenyEgressACL := libovsdbops.BuildACL(
+	defaultDenyEgressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastDenyPriority,
@@ -50,7 +51,7 @@ func getMulticastExpectedData(netInfo util.NetInfo, clusterPortGroup, clusterRtr
 
 	aclIDs = getDefaultMcastACLDbIDs(mcastDefaultDenyID, libovsdbutil.ACLIngress, netControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
-	defaultDenyIngressACL := libovsdbops.BuildACL(
+	defaultDenyIngressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastDenyPriority,
@@ -69,7 +70,7 @@ func getMulticastExpectedData(netInfo util.NetInfo, clusterPortGroup, clusterRtr
 	aclIDs = getDefaultMcastACLDbIDs(mcastAllowInterNodeID, libovsdbutil.ACLEgress, netControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
 	egressMatch := libovsdbutil.GetACLMatch(clusterRtrPortGroup.Name, match, libovsdbutil.ACLEgress)
-	defaultAllowEgressACL := libovsdbops.BuildACL(
+	defaultAllowEgressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastAllowPriority,
@@ -89,7 +90,7 @@ func getMulticastExpectedData(netInfo util.NetInfo, clusterPortGroup, clusterRtr
 	aclIDs = getDefaultMcastACLDbIDs(mcastAllowInterNodeID, libovsdbutil.ACLIngress, netControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
 	ingressMatch := libovsdbutil.GetACLMatch(clusterRtrPortGroup.Name, match, libovsdbutil.ACLIngress)
-	defaultAllowIngressACL := libovsdbops.BuildACL(
+	defaultAllowIngressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastAllowPriority,
@@ -158,7 +159,7 @@ func getMulticastPolicyExpectedData(netInfo util.NetInfo, ns string, ports []str
 
 	aclIDs := getNamespaceMcastACLDbIDs(ns, libovsdbutil.ACLEgress, netControllerName)
 	aclName := libovsdbutil.GetACLName(aclIDs)
-	egressACL := libovsdbops.BuildACL(
+	egressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionFromLport,
 		types.DefaultMcastAllowPriority,
@@ -177,7 +178,7 @@ func getMulticastPolicyExpectedData(netInfo util.NetInfo, ns string, ports []str
 
 	aclIDs = getNamespaceMcastACLDbIDs(ns, libovsdbutil.ACLIngress, netControllerName)
 	aclName = libovsdbutil.GetACLName(aclIDs)
-	ingressACL := libovsdbops.BuildACL(
+	ingressACL := ovnops.BuildACL(
 		aclName,
 		nbdb.ACLDirectionToLport,
 		types.DefaultMcastAllowPriority,
@@ -830,7 +831,7 @@ var _ = Describe("OVN Multicast with IP Address Family", func() {
 				// We use externalIDs instead; so we can check if the expected IDs exist for the long namespace so that
 				// isEquivalent logic will be correct
 				Expect(acl.Name).To(BeNil())
-				Expect(acl.ExternalIDs[libovsdbops.ObjectNameKey.String()]).To(Equal(longnamespaceName1Name))
+				Expect(acl.ExternalIDs[ovsdbops.ObjectNameKey.String()]).To(Equal(longnamespaceName1Name))
 
 				// the NAD is configured in longnamespaceName1Name so there shouldn't be any entries for
 				// longNameSpace2Name
@@ -838,7 +839,7 @@ var _ = Describe("OVN Multicast with IP Address Family", func() {
 					expectedData = append(expectedData, getMulticastPolicyExpectedData(netInfo, longNameSpace2Name, nil)...)
 					acl = expectedData[3].(*nbdb.ACL)
 					Expect(acl.Name).To(BeNil())
-					Expect(acl.ExternalIDs[libovsdbops.ObjectNameKey.String()]).To(Equal(longNameSpace2Name))
+					Expect(acl.ExternalIDs[ovsdbops.ObjectNameKey.String()]).To(Equal(longNameSpace2Name))
 				}
 				expectedData = append(expectedData, getExpectedPodsAndSwitches(bnc.GetNetInfo(), []testPod{}, []string{node.Name})...)
 				// Enable multicast in the namespace.

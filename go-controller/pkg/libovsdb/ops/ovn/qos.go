@@ -1,4 +1,4 @@
-package ops
+package ovn
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
@@ -24,11 +25,11 @@ func FindQoSesWithPredicate(nbClient libovsdbclient.Client, p QoSPredicate) ([]*
 
 // CreateOrUpdateQoSesOps returns the ops to create or update the provided QoSes.
 func CreateOrUpdateQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, qoses ...*nbdb.QoS) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(qoses))
+	opModels := make([]ovsdbops.OperationModel, 0, len(qoses))
 	for i := range qoses {
 		// can't use i in the predicate, for loop replaces it in-memory
 		qos := qoses[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          qos,
 			OnModelUpdates: []interface{}{}, // update all fields
 			ErrNotFound:    false,
@@ -37,16 +38,16 @@ func CreateOrUpdateQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operatio
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
 func UpdateQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, qoses ...*nbdb.QoS) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(qoses))
+	opModels := make([]ovsdbops.OperationModel, 0, len(qoses))
 	for i := range qoses {
 		// can't use i in the predicate, for loop replaces it in-memory
 		qos := qoses[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:          qos,
 			OnModelUpdates: []interface{}{}, // update all fields
 			ErrNotFound:    true,
@@ -55,7 +56,7 @@ func UpdateQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, qoses
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels...)
 }
 
@@ -69,24 +70,24 @@ func AddQoSesToLogicalSwitchOps(nbClient libovsdbclient.Client, ops []ovsdb.Oper
 		sw.QOSRules = append(sw.QOSRules, qos.UUID)
 	}
 
-	opModels := operationModel{
+	opModels := ovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.QOSRules},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.CreateOrUpdateOps(ops, opModels)
 }
 
 // DeleteQoSesOps returns the ops to delete the provided QoSes.
 func DeleteQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, qoses ...*nbdb.QoS) ([]ovsdb.Operation, error) {
-	opModels := make([]operationModel, 0, len(qoses))
+	opModels := make([]ovsdbops.OperationModel, 0, len(qoses))
 	for i := range qoses {
 		// can't use i in the predicate, for loop replaces it in-memory
 		qos := qoses[i]
-		opModel := operationModel{
+		opModel := ovsdbops.OperationModel{
 			Model:       qos,
 			ErrNotFound: false,
 			BulkOp:      false,
@@ -94,7 +95,7 @@ func DeleteQoSesOps(nbClient libovsdbclient.Client, ops []ovsdb.Operation, qoses
 		opModels = append(opModels, opModel)
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.DeleteOps(ops, opModels...)
 }
 
@@ -108,13 +109,13 @@ func RemoveQoSesFromLogicalSwitchOps(nbClient libovsdbclient.Client, ops []ovsdb
 		sw.QOSRules = append(sw.QOSRules, qos.UUID)
 	}
 
-	opModels := operationModel{
+	opModels := ovsdbops.OperationModel{
 		Model:            sw,
 		OnModelMutations: []interface{}{&sw.QOSRules},
 		ErrNotFound:      true,
 		BulkOp:           false,
 	}
 
-	modelClient := newModelClient(nbClient)
+	modelClient := ovsdbops.NewModelClient(nbClient)
 	return modelClient.DeleteOps(ops, opModels)
 }

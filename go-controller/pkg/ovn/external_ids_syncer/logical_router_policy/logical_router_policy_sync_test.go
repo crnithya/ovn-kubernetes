@@ -9,7 +9,7 @@ import (
 	"github.com/onsi/gomega"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -483,13 +483,13 @@ func getMarkOptions(mark int) map[string]string {
 	return map[string]string{"pkt_mark": fmt.Sprintf("%d", mark)}
 }
 
-func getEgressIPLRPNoReRouteDbIDs(priority int, uniqueName, ipFamily, network, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.LogicalRouterPolicyEgressIP, controller, map[libovsdbops.ExternalIDKey]string{
+func getEgressIPLRPNoReRouteDbIDs(priority int, uniqueName, ipFamily, network, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.LogicalRouterPolicyEgressIP, controller, map[ovsdbops.ExternalIDKey]string{
 		// egress ip creates global no-reroute policies at 102 priority
-		libovsdbops.ObjectNameKey: uniqueName,
-		libovsdbops.PriorityKey:   fmt.Sprintf("%d", priority),
-		libovsdbops.IPFamilyKey:   ipFamily,
-		libovsdbops.NetworkKey:    network,
+		ovsdbops.ObjectNameKey: uniqueName,
+		ovsdbops.PriorityKey:   fmt.Sprintf("%d", priority),
+		ovsdbops.IPFamilyKey:   ipFamily,
+		ovsdbops.NetworkKey:    network,
 	})
 }
 

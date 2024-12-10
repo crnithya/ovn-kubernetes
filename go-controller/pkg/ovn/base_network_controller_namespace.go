@@ -15,7 +15,8 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -61,10 +62,10 @@ type namespaceInfo struct {
 	aclLogging libovsdbutil.ACLLoggingLevels
 }
 
-func getNamespaceAddrSetDbIDs(namespaceName, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, controller, map[libovsdbops.ExternalIDKey]string{
+func getNamespaceAddrSetDbIDs(namespaceName, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, controller, map[ovsdbops.ExternalIDKey]string{
 		// namespace has only 1 address set, no additional ids are required
-		libovsdbops.ObjectNameKey: namespaceName,
+		ovsdbops.ObjectNameKey: namespaceName,
 	})
 }
 
@@ -172,9 +173,9 @@ func (bnc *BaseNetworkController) syncNamespaces(namespaces []interface{}) error
 		}
 	}
 
-	err := bnc.addressSetFactory.ProcessEachAddressSet(bnc.controllerName, libovsdbops.AddressSetNamespace,
-		func(dbIDs *libovsdbops.DbObjectIDs) error {
-			if !expectedNs[dbIDs.GetObjectID(libovsdbops.ObjectNameKey)] {
+	err := bnc.addressSetFactory.ProcessEachAddressSet(bnc.controllerName, ovsdbops.AddressSetNamespace,
+		func(dbIDs *ovsdbops.DbObjectIDs) error {
+			if !expectedNs[dbIDs.GetObjectID(ovsdbops.ObjectNameKey)] {
 				if err := bnc.addressSetFactory.DestroyAddressSet(dbIDs); err != nil {
 					klog.Errorf(err.Error())
 					return err
@@ -188,13 +189,13 @@ func (bnc *BaseNetworkController) syncNamespaces(namespaces []interface{}) error
 	}
 
 	// remove stale port groups
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNamespace, bnc.controllerName, nil)
-	p := libovsdbops.GetPredicate[*nbdb.PortGroup](predicateIDs, func(item *nbdb.PortGroup) bool {
-		namespaceName := item.ExternalIDs[libovsdbops.ObjectNameKey.String()]
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNamespace, bnc.controllerName, nil)
+	p := ovsdbops.GetPredicate[*nbdb.PortGroup](predicateIDs, func(item *nbdb.PortGroup) bool {
+		namespaceName := item.ExternalIDs[ovsdbops.ObjectNameKey.String()]
 		return !bnc.needNamespacedPortGroup() || !expectedNs[namespaceName]
 	})
 
-	err = libovsdbops.DeletePortGroupsWithPredicate(bnc.nbClient, p)
+	err = ovnops.DeletePortGroupsWithPredicate(bnc.nbClient, p)
 	if err != nil {
 		return fmt.Errorf("unable to delete stale namespace port groups: %v", err)
 	}
@@ -429,15 +430,15 @@ func (bnc *BaseNetworkController) createNamespacePortGroup(ns string) (string, e
 	pgIDs := getNamespacePortGroupDbIDs(ns, bnc.controllerName)
 	// create empty port group if it doesn't exist
 	pg := libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-	err := libovsdbops.CreatePortGroup(bnc.nbClient, pg)
+	err := ovnops.CreatePortGroup(bnc.nbClient, pg)
 
 	return pg.Name, err
 }
 
-func getNamespacePortGroupDbIDs(ns string, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupNamespace, controller,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: ns,
+func getNamespacePortGroupDbIDs(ns string, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupNamespace, controller,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: ns,
 		})
 }
 
@@ -489,7 +490,7 @@ func (bsnc *BaseNetworkController) removeRemoteZonePodFromNamespaceAddressSet(po
 		return fmt.Errorf("failed to delete remote pod %s's IP from namespace: %w", podDesc, err)
 	}
 
-	_, err = libovsdbops.TransactAndCheck(bsnc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(bsnc.nbClient, ops)
 	if err != nil {
 		return fmt.Errorf("could not delete remote pod IPs from the namespace address set - %w", err)
 	}

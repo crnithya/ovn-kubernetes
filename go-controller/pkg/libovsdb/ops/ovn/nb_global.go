@@ -1,15 +1,16 @@
-package ops
+package ovn
 
 import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 )
 
 // GetNBGlobal looks up the NB Global entry from the cache
 func GetNBGlobal(nbClient libovsdbclient.Client, nbGlobal *nbdb.NBGlobal) (*nbdb.NBGlobal, error) {
 	found := []*nbdb.NBGlobal{}
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model:          nbGlobal,
 		ModelPredicate: func(_ *nbdb.NBGlobal) bool { return true },
 		ExistingResult: &found,
@@ -17,7 +18,7 @@ func GetNBGlobal(nbClient libovsdbclient.Client, nbGlobal *nbdb.NBGlobal) (*nbdb
 		BulkOp:         false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	err := m.Lookup(opModel)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,7 @@ func UpdateNBGlobalSetOptions(nbClient libovsdbclient.Client, nbGlobal *nbdb.NBG
 	}
 
 	// Update the options column in the nbGlobal entry since we already performed a lookup
-	opModel := operationModel{
+	opModel := ovsdbops.OperationModel{
 		Model: updatedNbGlobal,
 		OnModelUpdates: []interface{}{
 			&updatedNbGlobal.Options,
@@ -58,7 +59,7 @@ func UpdateNBGlobalSetOptions(nbClient libovsdbclient.Client, nbGlobal *nbdb.NBG
 		BulkOp:      false,
 	}
 
-	m := newModelClient(nbClient)
+	m := ovsdbops.NewModelClient(nbClient)
 	_, err = m.CreateOrUpdate(opModel)
 	return err
 }

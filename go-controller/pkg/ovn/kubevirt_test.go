@@ -18,7 +18,7 @@ import (
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/kubevirt"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -816,7 +816,7 @@ var _ = Describe("OVN Kubevirt Operations", func() {
 					Expect(fakeOvn.controller.lsManager.AllocateIPs(newNode.Name, podAnnotation.IPs)).ToNot(Succeed(), "should allocate the pod IPs when node is replaced")
 
 					// Make ovn expectations after pod deletion happy
-					Expect(libovsdbops.DeleteLogicalSwitchPorts(fakeOvn.nbClient, &nbdb.LogicalSwitch{Name: newNode.Name}, &nbdb.LogicalSwitchPort{Name: "stor-newNode1"})).To(Succeed())
+					Expect(ovnops.DeleteLogicalSwitchPorts(fakeOvn.nbClient, &nbdb.LogicalSwitch{Name: newNode.Name}, &nbdb.LogicalSwitchPort{Name: "stor-newNode1"})).To(Succeed())
 					Expect(fakeOvn.controller.deleteNodeEvent(newNode)).ToNot(HaveOccurred())
 					Expect(err).ToNot(HaveOccurred())
 				}

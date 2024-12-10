@@ -12,7 +12,8 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/ovsdb"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
@@ -41,14 +42,14 @@ func (oc *DefaultNetworkController) setupUDNACLs(mgmtPortIPs []net.IP) error {
 	pg := &nbdb.PortGroup{
 		Name: libovsdbutil.GetPortGroupName(pgIDs),
 	}
-	_, err := libovsdbops.GetPortGroup(oc.nbClient, pg)
+	_, err := ovnops.GetPortGroup(oc.nbClient, pg)
 	if err != nil {
 		if !errors.Is(err, libovsdbclient.ErrNotFound) {
 			return err
 		}
 		// we didn't find an existing secondaryPodsPG, let's create a new empty PG
 		pg = libovsdbutil.BuildPortGroup(pgIDs, nil, nil)
-		err = libovsdbops.CreateOrUpdatePortGroups(oc.nbClient, pg)
+		err = ovnops.CreateOrUpdatePortGroups(oc.nbClient, pg)
 		if err != nil {
 			klog.Errorf("Failed to create secondary pods port group: %v", err)
 			return err
@@ -114,32 +115,32 @@ func (oc *DefaultNetworkController) setupUDNACLs(mgmtPortIPs []net.IP) error {
 	match = libovsdbutil.GetACLMatch(pgName, match, libovsdbutil.ACLIngress)
 	ingressAllowACL := libovsdbutil.BuildACL(ingressAllowIDs, types.PrimaryUDNAllowPriority, match, nbdb.ACLActionAllowRelated, nil, libovsdbutil.LportIngress)
 
-	ops, err := libovsdbops.CreateOrUpdateACLsOps(oc.nbClient, nil, oc.GetSamplingConfig(), egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
+	ops, err := ovnops.CreateOrUpdateACLsOps(oc.nbClient, nil, oc.GetSamplingConfig(), egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
 	if err != nil {
 		return fmt.Errorf("failed to create or update UDN ACLs: %v", err)
 	}
 
-	ops, err = libovsdbops.AddACLsToPortGroupOps(oc.nbClient, ops, pgName, egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
+	ops, err = ovnops.AddACLsToPortGroupOps(oc.nbClient, ops, pgName, egressDenyACL, egressARPACL, ingressARPACL, ingressDenyACL, ingressAllowACL)
 	if err != nil {
 		return fmt.Errorf("failed to add UDN ACLs to portGroup %s: %v", pgName, err)
 	}
 
-	_, err = libovsdbops.TransactAndCheck(oc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(oc.nbClient, ops)
 	return err
 }
 
-func (oc *DefaultNetworkController) getSecondaryPodsPortGroupDbIDs() *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.PortGroupUDN, oc.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: "SecondaryPods",
+func (oc *DefaultNetworkController) getSecondaryPodsPortGroupDbIDs() *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.PortGroupUDN, oc.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: "SecondaryPods",
 		})
 }
 
-func (oc *DefaultNetworkController) getUDNACLDbIDs(name string, aclDir libovsdbutil.ACLDirection) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLUDN, oc.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey:      name,
-			libovsdbops.PolicyDirectionKey: string(aclDir),
+func (oc *DefaultNetworkController) getUDNACLDbIDs(name string, aclDir libovsdbutil.ACLDirection) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLUDN, oc.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey:      name,
+			ovsdbops.PolicyDirectionKey: string(aclDir),
 		})
 }
 
@@ -181,7 +182,7 @@ func (oc *DefaultNetworkController) setUDNPodOpenPorts(podNamespacedName string,
 	if err != nil {
 		return errors.Join(parseErr, err)
 	}
-	_, err = libovsdbops.TransactAndCheck(oc.nbClient, ops)
+	_, err = ovsdbops.TransactAndCheck(oc.nbClient, ops)
 	if err != nil {
 		return utilerrors.Join(parseErr, fmt.Errorf("failed to transact open ports UDN ACLs: %v", err))
 	}
@@ -207,22 +208,22 @@ func (oc *DefaultNetworkController) setUDNPodOpenPortsOps(podNamespacedName stri
 	var err error
 	if ingressMatch == "" && egressMatch == "" || parseErr != nil {
 		// no open ports or error parsing annotations, remove ACLs
-		foundACLs, err := libovsdbops.FindACLs(oc.nbClient, []*nbdb.ACL{ingressACL, egressACL})
+		foundACLs, err := ovnops.FindACLs(oc.nbClient, []*nbdb.ACL{ingressACL, egressACL})
 		if err != nil {
 			return ops, parseErr, fmt.Errorf("failed to find open ports UDN ACLs: %v", err)
 		}
-		ops, err = libovsdbops.DeleteACLsFromPortGroupOps(oc.nbClient, ops, udnPGName, foundACLs...)
+		ops, err = ovnops.DeleteACLsFromPortGroupOps(oc.nbClient, ops, udnPGName, foundACLs...)
 		if err != nil {
 			return ops, parseErr, fmt.Errorf("failed to remove open ports ACLs from portGroup %s: %v", udnPGName, err)
 		}
 	} else {
 		// update ACLs
-		ops, err = libovsdbops.CreateOrUpdateACLsOps(oc.nbClient, ops, oc.GetSamplingConfig(), ingressACL, egressACL)
+		ops, err = ovnops.CreateOrUpdateACLsOps(oc.nbClient, ops, oc.GetSamplingConfig(), ingressACL, egressACL)
 		if err != nil {
 			return ops, parseErr, fmt.Errorf("failed to create or update open ports UDN ACLs: %v", err)
 		}
 
-		ops, err = libovsdbops.AddACLsToPortGroupOps(oc.nbClient, ops, udnPGName, ingressACL, egressACL)
+		ops, err = ovnops.AddACLsToPortGroupOps(oc.nbClient, ops, udnPGName, ingressACL, egressACL)
 		if err != nil {
 			return ops, parseErr, fmt.Errorf("failed to add open ports ACLs to portGroup %s: %v", udnPGName, err)
 		}
@@ -230,10 +231,10 @@ func (oc *DefaultNetworkController) setUDNPodOpenPortsOps(podNamespacedName stri
 	return ops, parseErr, nil
 }
 
-func (oc *DefaultNetworkController) getUDNOpenPortDbIDs(podNamespacedName string, aclDir libovsdbutil.ACLDirection) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLUDN, oc.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey:      OpenPortACLPrefix + podNamespacedName,
-			libovsdbops.PolicyDirectionKey: string(aclDir),
+func (oc *DefaultNetworkController) getUDNOpenPortDbIDs(podNamespacedName string, aclDir libovsdbutil.ACLDirection) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLUDN, oc.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey:      OpenPortACLPrefix + podNamespacedName,
+			ovsdbops.PolicyDirectionKey: string(aclDir),
 		})
 }

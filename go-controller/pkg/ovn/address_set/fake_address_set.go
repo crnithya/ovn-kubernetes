@@ -13,7 +13,7 @@ import (
 	"github.com/ovn-org/libovsdb/ovsdb"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 )
 
 func NewFakeAddressSetFactory(controllerName string) *FakeAddressSetFactory {
@@ -46,7 +46,7 @@ func (f *FakeAddressSetFactory) ErrOnNextNewASCall() {
 }
 
 // NewAddressSet returns a new address set object
-func (f *FakeAddressSetFactory) NewAddressSet(dbIDs *libovsdbops.DbObjectIDs, addresses []string) (AddressSet, error) {
+func (f *FakeAddressSetFactory) NewAddressSet(dbIDs *ovsdbops.DbObjectIDs, addresses []string) (AddressSet, error) {
 	if f.errOnNextNewAddrSet {
 		f.errOnNextNewAddrSet = false
 		return nil, fmt.Errorf(FakeASFError)
@@ -69,7 +69,7 @@ func (f *FakeAddressSetFactory) NewAddressSet(dbIDs *libovsdbops.DbObjectIDs, ad
 }
 
 // NewAddressSetOps returns a new address set object
-func (f *FakeAddressSetFactory) NewAddressSetOps(dbIDs *libovsdbops.DbObjectIDs, addresses []string) (AddressSet, []ovsdb.Operation, error) {
+func (f *FakeAddressSetFactory) NewAddressSetOps(dbIDs *ovsdbops.DbObjectIDs, addresses []string) (AddressSet, []ovsdb.Operation, error) {
 	if f.errOnNextNewAddrSet {
 		f.errOnNextNewAddrSet = false
 		return nil, nil, fmt.Errorf(FakeASFError)
@@ -92,7 +92,7 @@ func (f *FakeAddressSetFactory) NewAddressSetOps(dbIDs *libovsdbops.DbObjectIDs,
 }
 
 // EnsureAddressSet returns set object
-func (f *FakeAddressSetFactory) EnsureAddressSet(dbIDs *libovsdbops.DbObjectIDs) (AddressSet, error) {
+func (f *FakeAddressSetFactory) EnsureAddressSet(dbIDs *ovsdbops.DbObjectIDs) (AddressSet, error) {
 	if err := f.asf.validateDbIDs(dbIDs); err != nil {
 		return nil, fmt.Errorf("failed to ensure address set: %w", err)
 	}
@@ -112,7 +112,7 @@ func (f *FakeAddressSetFactory) EnsureAddressSet(dbIDs *libovsdbops.DbObjectIDs)
 }
 
 // GetAddressSet returns set object
-func (f *FakeAddressSetFactory) GetAddressSet(dbIDs *libovsdbops.DbObjectIDs) (AddressSet, error) {
+func (f *FakeAddressSetFactory) GetAddressSet(dbIDs *ovsdbops.DbObjectIDs) (AddressSet, error) {
 	if err := f.asf.validateDbIDs(dbIDs); err != nil {
 		return nil, fmt.Errorf("failed to get address set: %w", err)
 	}
@@ -126,9 +126,9 @@ func (f *FakeAddressSetFactory) GetAddressSet(dbIDs *libovsdbops.DbObjectIDs) (A
 	return nil, fmt.Errorf("error fetching address set")
 }
 
-func (f *FakeAddressSetFactory) ProcessEachAddressSet(ownerController string, indexT *libovsdbops.ObjectIDsType, iteratorFn AddressSetIterFunc) error {
+func (f *FakeAddressSetFactory) ProcessEachAddressSet(ownerController string, indexT *ovsdbops.ObjectIDsType, iteratorFn AddressSetIterFunc) error {
 	f.Lock()
-	asNames := map[string]*libovsdbops.DbObjectIDs{}
+	asNames := map[string]*ovsdbops.DbObjectIDs{}
 	for _, set := range f.sets {
 		if !set.dbIDs.HasSameOwner(ownerController, indexT) {
 			continue
@@ -149,7 +149,7 @@ func (f *FakeAddressSetFactory) ProcessEachAddressSet(ownerController string, in
 	return nil
 }
 
-func (f *FakeAddressSetFactory) DestroyAddressSet(dbIDs *libovsdbops.DbObjectIDs) error {
+func (f *FakeAddressSetFactory) DestroyAddressSet(dbIDs *ovsdbops.DbObjectIDs) error {
 	if err := f.asf.validateDbIDs(dbIDs); err != nil {
 		return fmt.Errorf("failed to destroy address set: %w", err)
 	}
@@ -161,7 +161,7 @@ func (f *FakeAddressSetFactory) DestroyAddressSet(dbIDs *libovsdbops.DbObjectIDs
 	return nil
 }
 
-func (f *FakeAddressSetFactory) getAddressSet(dbIDs *libovsdbops.DbObjectIDs) *fakeAddressSets {
+func (f *FakeAddressSetFactory) getAddressSet(dbIDs *ovsdbops.DbObjectIDs) *fakeAddressSets {
 	f.Lock()
 	defer f.Unlock()
 	name := getOvnAddressSetsName(dbIDs)
@@ -180,7 +180,7 @@ func (f *FakeAddressSetFactory) removeAddressSet(name string) {
 }
 
 // expectAddressSetWithAddresses ensures the named address set exists with the given set of addresses
-func (f *FakeAddressSetFactory) expectAddressSetWithAddresses(g gomega.Gomega, dbIDs *libovsdbops.DbObjectIDs, addresses []string) {
+func (f *FakeAddressSetFactory) expectAddressSetWithAddresses(g gomega.Gomega, dbIDs *ovsdbops.DbObjectIDs, addresses []string) {
 	var lenAddressSet int
 	as := f.getAddressSet(dbIDs)
 	gomega.Expect(as).ToNot(gomega.BeNil(), fmt.Sprintf("expected address set %s to exist", dbIDs.String()))
@@ -222,20 +222,20 @@ func (f *FakeAddressSetFactory) expectAddressSetWithAddresses(g gomega.Gomega, d
 	g.Expect(lenAddressSet).To(gomega.Equal(len(addresses)))
 }
 
-func (f *FakeAddressSetFactory) getDbIDsFromNsNameOrDbIDs(dbIDsOrNsName any) *libovsdbops.DbObjectIDs {
-	var dbIDs *libovsdbops.DbObjectIDs
+func (f *FakeAddressSetFactory) getDbIDsFromNsNameOrDbIDs(dbIDsOrNsName any) *ovsdbops.DbObjectIDs {
+	var dbIDs *ovsdbops.DbObjectIDs
 	if nsName, ok := dbIDsOrNsName.(string); ok {
-		dbIDs = libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetNamespace, f.ControllerName, map[libovsdbops.ExternalIDKey]string{
-			libovsdbops.ObjectNameKey: nsName,
+		dbIDs = ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetNamespace, f.ControllerName, map[ovsdbops.ExternalIDKey]string{
+			ovsdbops.ObjectNameKey: nsName,
 		})
-	} else if dbIDs, ok = dbIDsOrNsName.(*libovsdbops.DbObjectIDs); !ok {
+	} else if dbIDs, ok = dbIDsOrNsName.(*ovsdbops.DbObjectIDs); !ok {
 		panic("unexpected type of argument passed to ExpectAddressSetWithAddresses")
 	}
 	return dbIDs
 }
 
 // ExpectAddressSetWithAddresses ensure address set exists with the given set of ips.
-// Address set is identified by dbIDsOrNsName, which may be a namespace name (string) or a *libovsdbops.DbObjectIDs.
+// Address set is identified by dbIDsOrNsName, which may be a namespace name (string) or a *ovsdbops.DbObjectIDs.
 func (f *FakeAddressSetFactory) ExpectAddressSetWithAddresses(dbIDsOrNsName any, addresses []string) {
 	dbIDs := f.getDbIDsFromNsNameOrDbIDs(dbIDsOrNsName)
 	g := gomega.Default
@@ -311,11 +311,11 @@ type fakeAddressSets struct {
 	name     string
 	ipv4     *fakeAddressSet
 	ipv6     *fakeAddressSet
-	dbIDs    *libovsdbops.DbObjectIDs
+	dbIDs    *ovsdbops.DbObjectIDs
 	removeFn removeFunc
 }
 
-func (f *FakeAddressSetFactory) newFakeAddressSets(addresses []string, dbIDs *libovsdbops.DbObjectIDs, removeFn removeFunc) (*fakeAddressSets, error) {
+func (f *FakeAddressSetFactory) newFakeAddressSets(addresses []string, dbIDs *ovsdbops.DbObjectIDs, removeFn removeFunc) (*fakeAddressSets, error) {
 	var v4set, v6set *fakeAddressSet
 	v4Addresses := make([]string, 0)
 	v6Addresses := make([]string, 0)
@@ -336,7 +336,7 @@ func (f *FakeAddressSetFactory) newFakeAddressSets(addresses []string, dbIDs *li
 	return &fakeAddressSets{name: name, ipv4: v4set, ipv6: v6set, dbIDs: dbIDs, removeFn: removeFn}, nil
 }
 
-func (f *FakeAddressSetFactory) newFakeAddressSet(addresses []string, dbIDs *libovsdbops.DbObjectIDs, ipFamily string) *fakeAddressSet {
+func (f *FakeAddressSetFactory) newFakeAddressSet(addresses []string, dbIDs *ovsdbops.DbObjectIDs, ipFamily string) *fakeAddressSet {
 	name := getDbIDsWithIPFamily(dbIDs, ipFamily).String()
 
 	as := &fakeAddressSet{

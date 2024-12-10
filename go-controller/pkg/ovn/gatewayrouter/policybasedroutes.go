@@ -12,7 +12,7 @@ import (
 
 	"github.com/ovn-org/libovsdb/client"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	ovntypes "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -209,7 +209,7 @@ func (pbr *PolicyBasedRoutesManager) findPolicyBasedRoutes(priority string) ([]*
 		}
 		return itemNetworkName == networkName && item.Priority == intPriority
 	}
-	logicalRouterStaticPolicies, err := libovsdbops.FindLogicalRouterPoliciesWithPredicate(pbr.nbClient, p)
+	logicalRouterStaticPolicies, err := ovnops.FindLogicalRouterPoliciesWithPredicate(pbr.nbClient, p)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find logical router policy: %v", err)
 	}
@@ -219,7 +219,7 @@ func (pbr *PolicyBasedRoutesManager) findPolicyBasedRoutes(priority string) ([]*
 
 func (pbr *PolicyBasedRoutesManager) deletePolicyBasedRoutes(policyID string) error {
 	lrp := nbdb.LogicalRouterPolicy{UUID: policyID}
-	err := libovsdbops.DeleteLogicalRouterPolicies(pbr.nbClient, pbr.clusterRouterName, &lrp)
+	err := ovnops.DeleteLogicalRouterPolicies(pbr.nbClient, pbr.clusterRouterName, &lrp)
 	if err != nil {
 		return fmt.Errorf("error deleting policy %s: %v", policyID, err)
 	}
@@ -250,7 +250,7 @@ func (pbr *PolicyBasedRoutesManager) createPolicyBasedRoutes(match, priority, ne
 		return item.Priority == lrp.Priority && item.Match == lrp.Match
 	}
 
-	err = libovsdbops.CreateOrUpdateLogicalRouterPolicyWithPredicate(pbr.nbClient, pbr.clusterRouterName, &lrp, p,
+	err = ovnops.CreateOrUpdateLogicalRouterPolicyWithPredicate(pbr.nbClient, pbr.clusterRouterName, &lrp, p,
 		&lrp.Nexthops, &lrp.Action)
 	if err != nil {
 		return fmt.Errorf("error creating policy %+v on router %s: %v", lrp, pbr.clusterRouterName, err)

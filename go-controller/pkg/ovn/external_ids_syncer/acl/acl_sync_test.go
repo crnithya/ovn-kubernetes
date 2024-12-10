@@ -12,7 +12,8 @@ import (
 	knet "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovnops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovn"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	libovsdbtest "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/testing/libovsdb"
@@ -29,7 +30,7 @@ const (
 
 type aclSync struct {
 	before *nbdb.ACL
-	after  *libovsdbops.DbObjectIDs
+	after  *ovsdbops.DbObjectIDs
 }
 
 func testSyncerWithData(data []aclSync, controllerName string, initialDbState, finalDbState []libovsdbtest.TestData,
@@ -118,7 +119,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 	ginkgo.It("doesn't add 2 acls with the same PrimaryID", func() {
 		testData := []aclSync{
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterPortGroupNameBase, "DefaultDenyMulticastEgress"),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultMcastDenyPriority,
@@ -140,7 +141,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 				after: syncerToBuildData.getDefaultMcastACLDbIDs(mcastDefaultDenyID, "Egress"),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterPortGroupNameBase, "DefaultDenyMulticastEgress"),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultMcastDenyPriority,
@@ -163,7 +164,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		testData := []aclSync{
 			// defaultDenyEgressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterPortGroupNameBase, "DefaultDenyMulticastEgress"),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultMcastDenyPriority,
@@ -182,7 +183,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// defaultDenyIngressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterPortGroupNameBase, "DefaultDenyMulticastIngress"),
 					nbdb.ACLDirectionToLport,
 					types.DefaultMcastDenyPriority,
@@ -201,7 +202,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// defaultAllowEgressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterRtrPortGroupNameBase, "DefaultAllowMulticastEgress"),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultMcastAllowPriority,
@@ -220,7 +221,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// defaultAllowIngressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(types.ClusterRtrPortGroupNameBase, "DefaultAllowMulticastIngress"),
 					nbdb.ACLDirectionToLport,
 					types.DefaultMcastAllowPriority,
@@ -239,7 +240,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// nsAllowEgressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(namespace1, "MulticastAllowEgress"),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultMcastAllowPriority,
@@ -258,7 +259,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// nsAllowIngressACL
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					joinACLName(namespace1, "MulticastAllowIngress"),
 					nbdb.ACLDirectionToLport,
 					types.DefaultMcastAllowPriority,
@@ -286,7 +287,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		testData := []aclSync{
 			// ipv4 acl
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					"",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -303,7 +304,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// ipv6 acl
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					"",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -337,7 +338,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		policyName := "policyName"
 		testData := []aclSync{
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+policyName+"_0",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -361,7 +362,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 					0, 0, 0),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+policyName+"_0",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -385,7 +386,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 					0, 0, 1),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+policyName+"_0",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -409,7 +410,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 					0, 1, 0),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+policyName+"_0",
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -433,7 +434,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 					0, 1, 1),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+policyName+"_0",
 					nbdb.ACLDirectionFromLport,
 					types.DefaultAllowPriority,
@@ -470,7 +471,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		}
 		egressPGName := defaultDenyPortGroupName(policyNamespace, egressDefaultDenySuffix)
 		ingressPGName := defaultDenyPortGroupName(policyNamespace, ingressDefaultDenySuffix)
-		staleARPEgressACL := libovsdbops.BuildACL(
+		staleARPEgressACL := ovnops.BuildACL(
 			getStaleARPAllowACLName(policyNamespace),
 			nbdb.ACLDirectionFromLport,
 			types.DefaultAllowPriority,
@@ -492,7 +493,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		)
 		egressDenyPG.UUID = egressDenyPG.Name + "-UUID"
 
-		staleARPIngressACL := libovsdbops.BuildACL(
+		staleARPIngressACL := ovnops.BuildACL(
 			getStaleARPAllowACLName(policyNamespace),
 			nbdb.ACLDirectionToLport,
 			types.DefaultAllowPriority,
@@ -533,7 +534,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		testData := []aclSync{
 			// egress deny
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+egressDefaultDenySuffix,
 					nbdb.ACLDirectionFromLport,
 					types.DefaultDenyPriority,
@@ -550,7 +551,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// egress allow ARP
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					getStaleARPAllowACLName(policyNamespace),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultAllowPriority,
@@ -567,7 +568,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// ingress deny
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace+"_"+ingressDefaultDenySuffix,
 					nbdb.ACLDirectionToLport,
 					types.DefaultDenyPriority,
@@ -584,7 +585,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// ingress allow ARP
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					getStaleARPAllowACLName(policyNamespace),
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -612,7 +613,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		}
 		egressPGName := defaultDenyPortGroupName(policyNamespace, egressDefaultDenySuffix)
 		ingressPGName := defaultDenyPortGroupName(policyNamespace, ingressDefaultDenySuffix)
-		staleARPEgressACL := libovsdbops.BuildACL(
+		staleARPEgressACL := ovnops.BuildACL(
 			getStaleARPAllowACLName(policyNamespace),
 			nbdb.ACLDirectionFromLport,
 			types.DefaultAllowPriority,
@@ -634,7 +635,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		)
 		egressDenyPG.UUID = egressDenyPG.Name + "-UUID"
 
-		staleARPIngressACL := libovsdbops.BuildACL(
+		staleARPIngressACL := ovnops.BuildACL(
 			getStaleARPAllowACLName(policyNamespace),
 			nbdb.ACLDirectionToLport,
 			types.DefaultAllowPriority,
@@ -675,7 +676,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		testData := []aclSync{
 			// egress deny
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace,
 					nbdb.ACLDirectionFromLport,
 					types.DefaultDenyPriority,
@@ -692,7 +693,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// egress allow ARP
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					getStaleARPAllowACLName(policyNamespace),
 					nbdb.ACLDirectionFromLport,
 					types.DefaultAllowPriority,
@@ -709,7 +710,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// egress deny
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					policyNamespace,
 					nbdb.ACLDirectionToLport,
 					types.DefaultDenyPriority,
@@ -726,7 +727,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			},
 			// egress allow ARP
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					getStaleARPAllowACLName(policyNamespace),
 					nbdb.ACLDirectionToLport,
 					types.DefaultAllowPriority,
@@ -747,7 +748,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 	ginkgo.It("updates egress firewall acls", func() {
 		testData := []aclSync{
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					"random",
 					nbdb.ACLDirectionFromLport,
 					types.EgressFirewallStartPriority,
@@ -763,7 +764,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 				after: syncerToBuildData.getEgressFirewallACLDbIDs(namespace1, 0),
 			},
 			{
-				before: libovsdbops.BuildACL(
+				before: ovnops.BuildACL(
 					"random2",
 					nbdb.ACLDirectionFromLport,
 					types.EgressFirewallStartPriority-1,
@@ -782,7 +783,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 		testSyncerWithData(testData, controllerName, []libovsdbtest.TestData{}, nil, nil)
 	})
 	ginkgo.It("deletes leftover multicast acls", func() {
-		egressACL := libovsdbops.BuildACL(
+		egressACL := ovnops.BuildACL(
 			"",
 			nbdb.ACLDirectionFromLport,
 			types.DefaultRoutedMcastAllowPriority,
@@ -798,7 +799,7 @@ var _ = ginkgo.Describe("OVN ACL Syncer", func() {
 			types.PrimaryACLTier,
 		)
 		egressACL.UUID = "egress-multicast-UUID"
-		ingressACL := libovsdbops.BuildACL(
+		ingressACL := ovnops.BuildACL(
 			joinACLName(namespace1, "MulticastAllowIngress"),
 			nbdb.ACLDirectionToLport,
 			types.DefaultRoutedMcastAllowPriority,

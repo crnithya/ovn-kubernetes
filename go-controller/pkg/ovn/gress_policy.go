@@ -11,7 +11,7 @@ import (
 	knet "k8s.io/api/networking/v1"
 	utilnet "k8s.io/utils/net"
 
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/nbdb"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
@@ -317,15 +317,15 @@ func (gp *gressPolicy) buildLocalPodACLs(portGroupName string, aclLogging *libov
 	return
 }
 
-func (gp *gressPolicy) getNetpolACLDbIDs(ipBlockIdx int, protocol string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.ACLNetworkPolicy, gp.controllerName,
-		map[libovsdbops.ExternalIDKey]string{
+func (gp *gressPolicy) getNetpolACLDbIDs(ipBlockIdx int, protocol string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.ACLNetworkPolicy, gp.controllerName,
+		map[ovsdbops.ExternalIDKey]string{
 			// policy namespace+name
-			libovsdbops.ObjectNameKey: libovsdbops.BuildNamespaceNameKey(gp.policyNamespace, gp.policyName),
+			ovsdbops.ObjectNameKey: ovsdbops.BuildNamespaceNameKey(gp.policyNamespace, gp.policyName),
 			// egress or ingress
-			libovsdbops.PolicyDirectionKey: string(gp.policyType),
+			ovsdbops.PolicyDirectionKey: string(gp.policyType),
 			// gress rule index
-			libovsdbops.GressIdxKey: strconv.Itoa(gp.idx),
+			ovsdbops.GressIdxKey: strconv.Itoa(gp.idx),
 			// acls are created for every gp.portPolicies which are grouped by protocol:
 			// - for empty policy (no selectors and no ip blocks) - empty ACL
 			// OR
@@ -334,8 +334,8 @@ func (gp *gressPolicy) getNetpolACLDbIDs(ipBlockIdx int, protocol string) *libov
 			// Therefore unique id for a given gressPolicy is protocol name + IPBlock idx
 			// (protocol will be "None" if no port policy is defined, and empty policy and all
 			// selector-based peers ACLs will have idx=-1)
-			libovsdbops.IpBlockIndexKey: strconv.Itoa(ipBlockIdx),
+			ovsdbops.IpBlockIndexKey: strconv.Itoa(ipBlockIdx),
 			// protocol key
-			libovsdbops.PortPolicyProtocolKey: protocol,
+			ovsdbops.PortPolicyProtocolKey: protocol,
 		})
 }

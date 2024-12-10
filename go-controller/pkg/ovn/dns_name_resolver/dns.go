@@ -12,7 +12,7 @@ import (
 	libovsdbclient "github.com/ovn-org/libovsdb/client"
 
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/config"
-	libovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops"
+	ovsdbops "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/ops/ovsdb"
 	libovsdbutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/libovsdb/util"
 	addressset "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/ovn/address_set"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -51,11 +51,11 @@ type dnsEntry struct {
 	dnsAddressSet addressset.AddressSet
 }
 
-func GetEgressFirewallDNSAddrSetDbIDs(dnsName, controller string) *libovsdbops.DbObjectIDs {
-	return libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressFirewallDNS, controller,
-		map[libovsdbops.ExternalIDKey]string{
+func GetEgressFirewallDNSAddrSetDbIDs(dnsName, controller string) *ovsdbops.DbObjectIDs {
+	return ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressFirewallDNS, controller,
+		map[ovsdbops.ExternalIDKey]string{
 			// dns address sets are cluster-wide objects, they have unique names
-			libovsdbops.ObjectNameKey: dnsName,
+			ovsdbops.ObjectNameKey: dnsName,
 		})
 }
 
@@ -276,6 +276,6 @@ func (e *EgressDNS) DeleteStaleAddrSets(nbClient libovsdbclient.Client) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	predicateIDs := libovsdbops.NewDbObjectIDs(libovsdbops.AddressSetEgressFirewallDNS, e.controllerName, nil)
+	predicateIDs := ovsdbops.NewDbObjectIDs(ovsdbops.AddressSetEgressFirewallDNS, e.controllerName, nil)
 	return libovsdbutil.DeleteAddrSetsWithoutACLRef(predicateIDs, nbClient)
 }
