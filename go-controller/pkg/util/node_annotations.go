@@ -160,6 +160,9 @@ const (
 
 	// NoID signifies its an empty tunnel id (its reserved as un-usable when the allocator is created)
 	NoID = 0
+
+	// ovnNodeEncapIPs is used to indicate encap IPs set on the node
+	OVNNodeEncapIPs = "k8s.ovn.org/node-encap-ips"
 )
 
 type L3GatewayConfig struct {
@@ -1547,4 +1550,24 @@ func GetNetworkID(nodes []*corev1.Node, nInfo NetInfo) (int, error) {
 		}
 	}
 	return InvalidID, fmt.Errorf("missing network id for network '%s'", nInfo.GetNetworkName())
+}
+
+func SetNodeEncapIPs(nodeAnnotator kube.Annotator, encapips sets.Set[string]) error {
+	return nodeAnnotator.Set(OVNNodeEncapIPs, sets.List(encapips))
+}
+
+// ParseNodeEncapIPs returns the encap IPs set on a node
+func ParseNodeEncapIPs(node *kapi.Node) ([]string, error) {
+	encapIPsAnnotation, ok := node.Annotations[OVNNodeEncapIPs]
+	if !ok {
+		return nil, newAnnotationNotSetError("%s annotation not found for node %q", OVNNodeEncapIPs, node.Name)
+	}
+
+	var encapIPs []string
+	if err := json.Unmarshal([]byte(encapIPsAnnotation), &encapIPs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %s annotation for node %q: %v",
+			encapIPsAnnotation, node.Name, err)
+	}
+
+	return encapIPs, nil
 }
