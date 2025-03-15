@@ -1914,6 +1914,14 @@ ovnkube-controller-with-node() {
       fi
   fi
 
+  if [[ ${ovnkube_node_mode} != "dpu-host" && ! ${ovn_gateway_opts} =~ "gateway-accelerated-interface" ]]; then
+      # get the gateway accelerated interface
+      gw_accelerated_intf=$(ovs-vsctl --if-exists get Open_vSwitch . external_ids:gateway-accelerated-interface | tr -d \")
+      if [[ -n ${gw_accelerated_intf} ]]; then
+        ovn_gateway_opts+="--gateway-accelerated-interface=${gw_accelerated_intf}"
+      fi
+  fi
+
   ovnkube_node_mgmt_port_netdev_flag=
   if [[ ${ovnkube_node_mgmt_port_netdev} != "" ]]; then
     ovnkube_node_mgmt_port_netdev_flag="--ovnkube-node-mgmt-port-netdev=${ovnkube_node_mgmt_port_netdev}"
@@ -2583,6 +2591,14 @@ ovn-node() {
       gw_vlanid=$(ovs-vsctl --if-exists get Open_vSwitch . external_ids:ovn-gw-vlanid | tr -d \")
       if [[ -n ${gw_vlanid} ]]; then
         ovn_gateway_opts+="--gateway-vlanid=${gw_vlanid}"
+      fi
+  fi
+
+  if [[ ${ovnkube_node_mode} != "dpu-host" && ! ${ovn_gateway_opts} =~ "gateway-accelerated-interface" ]]; then
+      # get the gateway accelerated interface
+      gw_accelerated_intf=$(ovs-vsctl --if-exists get Open_vSwitch . external_ids:gateway-accelerated-interface | tr -d \")
+      if [[ -n ${gw_accelerated_intf} ]]; then
+        ovn_gateway_opts+="--gateway-accelerated-interface=${gw_accelerated_intf}"
       fi
   fi
 
