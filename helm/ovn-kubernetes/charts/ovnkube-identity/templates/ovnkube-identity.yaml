@@ -18,11 +18,15 @@ spec:
   selector:
     matchLabels:
       name: ovnkube-identity
+  # In the case of single control plane deployments, default rolling update
+  # strategy will be followed with 1 additional pod created temporarily.
+  {{- if (gt .Values.replicas 1) }}
   strategy:
     rollingUpdate:
       maxSurge: 0
       maxUnavailable: 1
     type: RollingUpdate
+  {{- end }}
   template:
     metadata:
       labels:
@@ -40,8 +44,32 @@ spec:
       serviceAccountName: ovnkube-identity
       hostNetwork: true
       dnsPolicy: Default
-      {{- if .Values.affinity }}
-      affinity: {{ toYaml .Values.affinity | nindent 8 }}
+      # Affinity for pod assignment
+      # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+      # Required to be scheduled on a linux node and only one instance of ovnkube-identity pod per node.
+      # However, in the case of single control plane deployments, there should be two instances of the
+      # pod running on the control plane node to keep the webhook operational.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - "linux"
+      {{- if (gt .Values.replicas 1) }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: name
+                    operator: In
+                    values:
+                      - ovnkube-identity
+              topologyKey: kubernetes.io/hostname
       {{- end }}
       containers:
       - name: ovnkube-identity
