@@ -149,7 +149,7 @@ func TestNodeAdmission_ValidateUpdate(t *testing.T) {
 					Annotations: map[string]string{util.OVNNodeHostCIDRs: "new"},
 				},
 			},
-			expectedErr: fmt.Errorf("ovnkube-node on node: %q is not allowed to modify nodes %q annotations", nodeName+"_rougeOne", nodeName),
+			expectedErr: fmt.Errorf("ovnkube-node for node: %q is not allowed to modify annotations on node %q", nodeName+"_rougeOne", nodeName),
 		},
 		{
 			name: "ovnkube-node cannot modify annotations that do not belong to it",
@@ -189,6 +189,45 @@ func TestNodeAdmission_ValidateUpdate(t *testing.T) {
 					Name:        nodeName,
 					Annotations: map[string]string{util.OvnNodeChassisID: "chassisID"}},
 			},
+		},
+		{
+			name: "ovnkube-node-dpu can add annotation on its host node",
+			ctx: admission.NewContextWithRequest(context.TODO(), admission.Request{
+				AdmissionRequest: v1.AdmissionRequest{UserInfo: authenticationv1.UserInfo{
+					Username: "system:ovn-node-dpu:dpu-host",
+				}},
+			}),
+			oldObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "dpu-host",
+				},
+			},
+			newObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "dpu-host",
+					Annotations: map[string]string{util.OvnNodeChassisID: "chassisID"},
+				},
+			},
+		},
+		{
+			name: "ovnkube-node-dpu cannot add annotation on a host node that doesn't belong to it",
+			ctx: admission.NewContextWithRequest(context.TODO(), admission.Request{
+				AdmissionRequest: v1.AdmissionRequest{UserInfo: authenticationv1.UserInfo{
+					Username: "system:ovn-node-dpu:dpu-host",
+				}},
+			}),
+			oldObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "another-dpu-host",
+				},
+			},
+			newObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "another-dpu-host",
+					Annotations: map[string]string{util.OvnNodeChassisID: "chassisID"},
+				},
+			},
+			expectedErr: fmt.Errorf("ovnkube-node-dpu for node: %q is not allowed to modify annotations on node %q", "dpu-host", "another-dpu-host"),
 		},
 		{
 			name: "ovnkube-node cannot remove util.OvnNodeChassisID",

@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	hotypes "github.com/ovn-kubernetes/ovn-kubernetes/go-controller/hybrid-overlay/pkg/types"
+	"github.com/ovn-kubernetes/ovn-kubernetes/go-controller/pkg/csrapprover"
 	"github.com/ovn-kubernetes/ovn-kubernetes/go-controller/pkg/types"
 	"github.com/ovn-kubernetes/ovn-kubernetes/go-controller/pkg/util"
 )
@@ -154,7 +155,11 @@ func (p NodeAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtim
 	}
 
 	if newNode.Name != nodeName {
-		return nil, fmt.Errorf("ovnkube-node on node: %q is not allowed to modify nodes %q annotations", nodeName, newNode.Name)
+		identityLabel := "ovnkube-node"
+		if strings.HasPrefix(req.UserInfo.Username, csrapprover.NamePrefixDPU+":") {
+			identityLabel = "ovnkube-node-dpu"
+		}
+		return nil, fmt.Errorf("%s for node: %q is not allowed to modify annotations on node %q", identityLabel, nodeName, newNode.Name)
 	}
 
 	// ovnkube-node is not allowed to change annotations outside of it's scope
