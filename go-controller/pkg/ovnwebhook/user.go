@@ -10,13 +10,8 @@ import (
 
 // checkNodeIdentity retrieves user name from UserInfo, based on given podAdmissions.
 func checkNodeIdentity(podAdmissions []PodAdmissionConditionOption, user authenticationv1.UserInfo) (bool, *PodAdmissionConditionOption, string) {
-	// Check DPU prefix first (system:ovn-node-dpu:<nodeName>)
-	if strings.HasPrefix(user.Username, csrapprover.NamePrefixDPU+":") {
-		return true, nil, strings.TrimPrefix(user.Username, csrapprover.NamePrefixDPU+":")
-	}
-	// check ovn-node prefix (system:ovn-node:<nodeName>)
-	if strings.HasPrefix(user.Username, csrapprover.NamePrefix+":") {
-		return true, nil, strings.TrimPrefix(user.Username, csrapprover.NamePrefix+":")
+	if nodeName, ok := ovnkubeNodeIdentity(user); ok {
+		return true, nil, nodeName
 	}
 
 	// check prefix in podAdmissions

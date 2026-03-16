@@ -51,8 +51,13 @@ func TestNewNodeAdmissionWebhook(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewNodeAdmissionWebhook(tt.enableInterconnect, tt.enableHybridOverlay); !got.annotationKeys.HasAll(tt.expectedKeys...) {
+			got := NewNodeAdmissionWebhook(tt.enableInterconnect, tt.enableHybridOverlay)
+			if !got.annotationKeys.HasAll(tt.expectedKeys...) {
 				t.Errorf("NewNodeAdmissionWebhook() = %v, want %v", got.annotationKeys, tt.expectedKeys)
+			}
+			// DPU webhook must always have the DPU-allowed node annotation keys
+			if !got.dpuAnnotationKeys.HasAll(maps.Keys(dpuNodeAnnotationChecks)...) {
+				t.Errorf("NewNodeAdmissionWebhook() dpuAnnotationKeys = %v, want all of %v", got.dpuAnnotationKeys, maps.Keys(dpuNodeAnnotationChecks))
 			}
 		})
 	}
@@ -149,7 +154,7 @@ func TestNodeAdmission_ValidateUpdate(t *testing.T) {
 					Annotations: map[string]string{util.OVNNodeHostCIDRs: "new"},
 				},
 			},
-			expectedErr: fmt.Errorf("ovnkube-node for node: %q is not allowed to modify annotations on node %q", nodeName+"_rougeOne", nodeName),
+			expectedErr: fmt.Errorf("ovnkube-node on node: %q is not allowed to modify annotations on node %q", nodeName+"_rougeOne", nodeName),
 		},
 		{
 			name: "ovnkube-node cannot modify annotations that do not belong to it",
@@ -228,6 +233,26 @@ func TestNodeAdmission_ValidateUpdate(t *testing.T) {
 				},
 			},
 			expectedErr: fmt.Errorf("ovnkube-node-dpu for node: %q is not allowed to modify annotations on node %q", "dpu-host", "another-dpu-host"),
+		},
+		{
+			name: "ovnkube-node-dpu cannot set annotations not in DPU allowed set",
+			ctx: admission.NewContextWithRequest(context.TODO(), admission.Request{
+				AdmissionRequest: v1.AdmissionRequest{UserInfo: authenticationv1.UserInfo{
+					Username: "system:ovn-node-dpu:" + nodeName,
+				}},
+			}),
+			oldObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: nodeName,
+				},
+			},
+			newObj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        nodeName,
+					Annotations: map[string]string{util.OVNNodeHostCIDRs: "192.168.1.0/24"},
+				},
+			},
+			expectedErr: fmt.Errorf("ovnkube-node-dpu for node: %q is not allowed to set the following annotations: %v", nodeName, []string{util.OVNNodeHostCIDRs}),
 		},
 		{
 			name: "ovnkube-node cannot remove util.OvnNodeChassisID",

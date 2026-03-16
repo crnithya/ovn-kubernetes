@@ -310,7 +310,7 @@ func (c *CSRAcceptanceCondition) validateCSR(req *certificatesv1.CertificateSign
 				if p == NamePrefixDPU {
 					continue
 				}
-				if strings.HasPrefix(req.Spec.Username, p) {
+				if strings.HasPrefix(req.Spec.Username, p+":") {
 					hasAllowedPrefix = true
 					break
 				}
