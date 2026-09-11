@@ -21,12 +21,20 @@ UBUNTU_IMAGE ?= $(if $(filter ovn-daemonset-fedora,$(IMAGE)),ovn-kube-ubuntu$(IM
 UBUNTU_IMAGE_LATEST ?= $(if $(filter ovn-daemonset-fedora,$(IMAGE)),ovn-kube-ubuntu,$(IMAGE))
 
 OVN_REPO ?= https://github.com/ovn-org/ovn
+# User-facing git ref (branch, tag, or SHA). Empty: Fedora koji, Ubuntu inbox.
+# Set to build both images from that OVN source. OVN_GITSHA is the resolved
+# commit passed as the Docker OVN_GITREF build-arg.
 OVN_GITREF ?=
+UBUNTU_OVN_FROM := inbox
 ifeq ($(OVN_GITREF),)
 OVN_FROM := koji
 else
 OVN_FROM := source
+UBUNTU_OVN_FROM := source
 OVN_GITSHA := $(shell git ls-remote "${OVN_REPO}" "${OVN_GITREF}" | sort -k2  -V  |tail -1 | awk '{ print $$1 }')
+ifeq ($(OVN_GITSHA),)
+OVN_GITSHA := $(OVN_GITREF)
+endif
 endif
 GO_VERSION ?= 1.26
 GO_IMAGE = quay.io/projectquay/golang:${GO_VERSION}
@@ -52,6 +60,9 @@ ubuntu-image:
 		--build-arg BUILDER_IMAGE=${GO_IMAGE} \
 		--build-arg KUBECTL_MINOR=${KUBECTL_MINOR} \
 		--build-arg UBUNTU_BASE_IMAGE=${UBUNTU_BASE_IMAGE} \
+		--build-arg OVN_FROM=${UBUNTU_OVN_FROM} \
+		--build-arg OVN_REPO=${OVN_REPO} \
+		--build-arg OVN_GITREF=${OVN_GITSHA} \
 		--platform=linux/${ARCH} \
 		-t ${UBUNTU_IMAGE} \
 		-f Dockerfile.ubuntu ../..
