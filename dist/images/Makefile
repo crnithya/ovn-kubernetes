@@ -22,11 +22,15 @@ UBUNTU_IMAGE_LATEST ?= $(if $(filter ovn-daemonset-fedora,$(IMAGE)),ovn-kube-ubu
 
 OVN_REPO ?= https://github.com/ovn-org/ovn
 OVN_GITREF ?=
+# Ubuntu has no koji debs, so OVN is built from source. This is the branch-26.03
+# commit shipped by the Fedora koji build ovn-26.03.2-122.fc43.
+UBUNTU_OVN_GITREF ?= 572bc48cf71e9409d32674371a4c9a5ca603bed1
 ifeq ($(OVN_GITREF),)
 OVN_FROM := koji
 else
 OVN_FROM := source
 OVN_GITSHA := $(shell git ls-remote "${OVN_REPO}" "${OVN_GITREF}" | sort -k2  -V  |tail -1 | awk '{ print $$1 }')
+UBUNTU_OVN_GITREF := $(OVN_GITSHA)
 endif
 GO_VERSION ?= 1.26
 GO_IMAGE = quay.io/projectquay/golang:${GO_VERSION}
@@ -52,6 +56,8 @@ ubuntu-image:
 		--build-arg BUILDER_IMAGE=${GO_IMAGE} \
 		--build-arg KUBECTL_MINOR=${KUBECTL_MINOR} \
 		--build-arg UBUNTU_BASE_IMAGE=${UBUNTU_BASE_IMAGE} \
+		--build-arg OVN_REPO=${OVN_REPO} \
+		--build-arg OVN_GITREF=${UBUNTU_OVN_GITREF} \
 		--platform=linux/${ARCH} \
 		-t ${UBUNTU_IMAGE} \
 		-f Dockerfile.ubuntu ../..

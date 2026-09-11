@@ -16,6 +16,10 @@ ARG OVN_KUBERNETES_DIR=.
 ARG KUBECTL_MINOR=1.35
 ARG UBUNTU_BASE_IMAGE=ubuntu:26.04
 
+#############################################
+# Stage to build OVN Kubernetes from Source #
+#############################################
+
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} AS ovnkube-builder
 
 ARG OVN_KUBERNETES_DIR
@@ -28,14 +32,92 @@ COPY ${OVN_KUBERNETES_DIR} ovn-kubernetes
 RUN cd ovn-kubernetes/dist/images && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} make bld
 
+#############################################
+# Stage to build OVN from source (for both  #
+# amd64 and arm64 Ubuntu images)            #
+#############################################
+
+FROM ${UBUNTU_BASE_IMAGE} AS ovnbuilder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git \
+    build-essential autoconf automake libtool pkg-config \
+    python3 python3-dev python3-sphinx \
+    libssl-dev libunbound-dev libunwind-dev libcap-ng-dev \
+    graphviz groff-base procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone OVN Source Code.
+# Default is the branch-26.03 commit that the Fedora koji build ovn-26.03.2-122.fc43
+# ships: v26.03.2 plus the commits picked up to the tip of branch-26.03. The v26.03.2
+# tag alone is not equivalent.
+ARG OVN_REPO=https://github.com/ovn-org/ovn.git
+ARG OVN_GITREF=572bc48cf71e9409d32674371a4c9a5ca603bed1
+WORKDIR /root/ovn
+RUN git init && \
+    git remote add origin $OVN_REPO && \
+    git fetch origin ${OVN_GITREF} --depth 1 && \
+    git reset --hard FETCH_HEAD
+
+# Clone OVS Source Code.
+ARG OVS_REPO=https://github.com/openvswitch/ovs.git
+# OVS_GITREF can be set to a specific commit or branch, otherwise the version pinned by OVN will be used.
+ARG OVS_GITREF=""
+WORKDIR /root
+RUN OVS_OVN_GITREF=$(cd ovn && git submodule status ovs|cut -c 2-|cut -d ' ' -f 1) && \
+    mkdir ovs && cd ovs && \
+    git init && \
+    git remote add origin $OVS_REPO && \
+    OVS_GITREF="${OVS_GITREF:-$OVS_OVN_GITREF}" && \
+    git fetch $OVS_REPO ${OVS_GITREF} --depth 1 && \
+    git reset --hard FETCH_HEAD
+
+# Build OVS libraries (OVN links against this tree; runtime OVS still comes from Ubuntu packages).
+# -fPIC is required: OVN below links libopenvswitch.a into a shared libovn, which
+# aarch64 rejects unless the archive objects are position independent.
+WORKDIR /root/ovs
+RUN ./boot.sh && \
+    ./configure CPPFLAGS="-g -O2 -fno-omit-frame-pointer -fPIC" \
+        --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+        --enable-ssl && \
+    make -j"$(nproc)" && \
+    git log -n 1
+
+# Build and install OVN into a staging directory. Flags mirror OVN's debian/rules
+# so the image matches an OVN built from Debian packaging. libdir must be the
+# multiarch path that the distro ovn-common ships libovn in, otherwise the
+# distro copy shadows this one at load time.
+WORKDIR /root/ovn
+RUN ./boot.sh && \
+    ./configure CPPFLAGS="-g -O2 -fno-omit-frame-pointer" \
+        --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+        --libdir=/usr/lib/"$(dpkg-architecture -qDEB_HOST_MULTIARCH)" \
+        --enable-ssl --enable-shared --with-ovs-source=/root/ovs && \
+    make -j"$(nproc)" && \
+    make install-strip DESTDIR=/ovn-install && \
+    git log -n 1
+
+#################################
+# Stage to build ovn-kubernetes #
+#################################
+
 FROM ${UBUNTU_BASE_IMAGE}
 
 ARG KUBECTL_MINOR
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 
 # Install bootstrap packages, verify the Kubernetes repo signing key
 # fingerprint, then install runtime dependencies and kubectl in one layer.
+# Distro OVN packages pull runtime libraries; they are overwritten by the
+# source-built install from ovnbuilder. libunwind8 is not among them: Debian
+# builds OVS/OVN without libunwind, while the ovnbuilder stage links it.
 RUN apt-get update && apt-get install -y \
     ca-certificates curl gpg iproute2 software-properties-common util-linux nftables ndisc6 libndp-tools && \
     mkdir -p -m 755 /etc/apt/keyrings && \
@@ -49,8 +131,15 @@ RUN apt-get update && apt-get install -y \
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBECTL_MINOR}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list && \
     chmod 644 /etc/apt/sources.list.d/kubernetes.list && \
     apt-get update && apt-get install -y \
-    openvswitch-switch openvswitch-common openvswitch-test ovn-central ovn-common ovn-host kubectl tcpdump && \
+    openvswitch-switch openvswitch-common openvswitch-test ovn-central ovn-common ovn-host kubectl tcpdump \
+    libunwind8 && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=ovnbuilder /ovn-install/ /
+RUN ldconfig && \
+    mkdir -p /usr/lib/ocf/resource.d/ovn /var/run/ovn /var/log/ovn /etc/ovn && \
+    ln -sfn /usr/share/ovn/scripts/ovndb-servers.ocf /usr/lib/ocf/resource.d/ovn/ovndb-servers && \
+    ln -sfn /usr/bin/ovn_detrace.py /usr/bin/ovn-detrace
 
 # Built in the ovnkube-builder stage, then the binaries are copied here.
 # put things where they are in the pkg
